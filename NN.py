@@ -78,7 +78,7 @@ class TwoLayerNet(object):
     # Loss 계산
     loss = None
     e = torch.exp(scores)
-    softmax = e / torch.sum(e, axis=1, keepdims=True)
+    softmax = e / torch.sum(e, dim=1, keepdim=True)
     #############################################################################
     #       TODO: Output을 이용하여 loss값 계산하고, 'loss'에 저장(scalar)        #
     #                loss function : negative log likelihood                    #
@@ -147,7 +147,7 @@ class TwoLayerNet(object):
 
       if it % iterations_per_epoch == 0:
         # Accuracy
-        train_acc = (self.predict(X) == y).mean()
+        train_acc = (self.predict(X) == y).float().mean()
         train_acc_history.append(train_acc)
 
         learning_rate *= learning_rate_decay
