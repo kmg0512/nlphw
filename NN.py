@@ -67,6 +67,12 @@ class TwoLayerNet(object):
     #         input - linear layer - ReLU - linear layer - output             #
     #############################################################################
     pass
+    wx = torch.mm(W1.t(), X.t())
+    a = torch.add(wx.t(), b1)
+    h = torch.max(torch.empty(a.size()), a)
+
+    wx = torch.mm(W2.t(), h.t())
+    scores = torch.add(wx.t(), b2)
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -78,7 +84,7 @@ class TwoLayerNet(object):
     # Loss 계산
     loss = None
     e = torch.exp(scores)
-    softmax = e / torch.sum(e, axis=1, keepdims=True)
+    softmax = e / torch.sum(e, dim=1, keepdim=True)
     #############################################################################
     #       TODO: Output을 이용하여 loss값 계산하고, 'loss'에 저장(scalar)        #
     #                loss function : negative log likelihood                    #
@@ -86,6 +92,7 @@ class TwoLayerNet(object):
     #         'y'는 정답 index를 가리키며 정답 확률에 -log 적용하여 평균           #
     #############################################################################
     pass
+    loss = -torch.sum(softmax.t() * torch.log(y.float() + 1e-7))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -147,7 +154,7 @@ class TwoLayerNet(object):
 
       if it % iterations_per_epoch == 0:
         # Accuracy
-        train_acc = (self.predict(X) == y).mean()
+        train_acc = (self.predict(X) == y).float().mean()
         train_acc_history.append(train_acc)
 
         learning_rate *= learning_rate_decay
