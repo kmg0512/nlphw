@@ -67,12 +67,10 @@ class TwoLayerNet(object):
     #         input - linear layer - ReLU - linear layer - output             #
     #############################################################################
     pass
-    wx = torch.mm(W1.t(), X.t())
-    a = torch.add(wx.t(), b1)
+    a = torch.mm(W1.t(), X.t()).t() + b1
     h = torch.max(torch.empty(a.size()), a)
 
-    wx = torch.mm(W2.t(), h.t())
-    scores = torch.add(wx.t(), b2)
+    scores = torch.mm(W2.t(), h.t()).t() + b2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -83,7 +81,7 @@ class TwoLayerNet(object):
 
     # Loss 계산
     loss = None
-    e = torch.exp(scores)
+    e = torch.exp(scores - torch.max(scores, dim=1, keepdim=True)[0])
     softmax = e / torch.sum(e, dim=1, keepdim=True)
     #############################################################################
     #       TODO: Output을 이용하여 loss값 계산하고, 'loss'에 저장(scalar)        #
@@ -92,7 +90,7 @@ class TwoLayerNet(object):
     #         'y'는 정답 index를 가리키며 정답 확률에 -log 적용하여 평균           #
     #############################################################################
     pass
-    loss = -torch.sum(softmax.t() * torch.log(y.float() + 1e-7))
+    loss = -torch.log(softmax)
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -106,6 +104,10 @@ class TwoLayerNet(object):
     #              softmax의 gradient부터 차근차근 구해나가도록 함.              #
     #############################################################################
     pass
+    gs = softmax
+    gs[range(N), y] = -1
+    gs /= N
+    #grads_W2 = 
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
