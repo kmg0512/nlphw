@@ -49,8 +49,8 @@ correct_loss = 1.2444149
 print('Difference between your loss and correct loss:')
 print(torch.sum(torch.abs(loss - correct_loss)))
 
-loss, grads = net.loss(X, y)
+#loss, grads = net.loss(X, y)
 
-results = net.train(X, y, 0.05)
-print("Train acc: %f -> %f\nTrain loss: %f -> %f" % (results['train_acc_history'][0], results['train_acc_history'][-1]
-                                                , results['loss_history'][0],results['loss_history'][-1]))
+#results = net.train(X, y, 0.05)
+#print("Train acc: %f -> %f\nTrain loss: %f -> %f" % (results['train_acc_history'][0], results['train_acc_history'][-1]
+#                                                , results['loss_history'][0],results['loss_history'][-1]))

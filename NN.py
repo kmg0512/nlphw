@@ -67,10 +67,10 @@ class TwoLayerNet(object):
     #         input - linear layer - ReLU - linear layer - output             #
     #############################################################################
     pass
-    a = torch.mm(W1.t(), X.t()).t() + b1
-    h = torch.max(torch.empty(a.size()), a)
+    a = X.mm(W1) + b1
+    h = torch.max(torch.zeros(a.size()), a)
 
-    scores = torch.mm(W2.t(), h.t()).t() + b2
+    scores = h.mm(W2) + b2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -81,7 +81,7 @@ class TwoLayerNet(object):
 
     # Loss 계산
     loss = None
-    e = torch.exp(scores - torch.max(scores, dim=1, keepdim=True)[0])
+    e = torch.exp(scores)
     softmax = e / torch.sum(e, dim=1, keepdim=True)
     #############################################################################
     #       TODO: Output을 이용하여 loss값 계산하고, 'loss'에 저장(scalar)        #
