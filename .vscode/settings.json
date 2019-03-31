@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "C:\\Users\\desktop\\Anaconda3\\python.exe"
+    "python.pythonPath": "/anaconda3/envs/nlp/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
 }

@@ -104,10 +104,16 @@ class TwoLayerNet(object):
     #              softmax의 gradient부터 차근차근 구해나가도록 함.              #
     #############################################################################
     pass
-    #gs = softmax
-    #gs[range(N), y] = -1
-    #gs /= N
-    #grads_W2 = 
+    ds = softmax
+    ds[range(N), y] -= 1
+
+    grads['W2'] = h.t().mm(ds) / N
+    grads['b2'] = torch.sum(ds) / N
+
+    dh = ds.mm(W2.t()) * (a > 0).float()
+    
+    grads['W1'] = X.t().mm(dh) / N
+    grads['b1'] = torch.sum(dh) / N
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -146,6 +152,8 @@ class TwoLayerNet(object):
       # TODO: 'grads' dictionary에서 gradient를 불러와 SGD update 수행        #
       #########################################################################
       pass
+      for key in self.params:
+        self.params[key] -= learning_rate * grads[key]
       #########################################################################
       #                             END OF YOUR CODE                          #
       #########################################################################
