@@ -1,6 +1,5 @@
 # Natural Language Processing Assignments
 
-
 ## Assignment 1
 Multi-layer Perceptron
 - Implementation of 2-layer perceptron with Pytorch
@@ -8,8 +7,7 @@ Multi-layer Perceptron
   2. Loss calculation
   3. Gradient calculation
 - Implement above 3 components at NN.py
-- Due : 3. 31.
-
+Due : 3. 31.
 
 ## Assignment 2
 Word2Vec Implementation
@@ -17,8 +15,7 @@ Word2Vec Implementation
   - Forward path
   - Backward path
   - Return : cost value and gradient of two word vectors
-- Due : 4. 14.
-
+Due : 4. 14.
 
 ## Assignment 3
 Word2Vec Implementation
@@ -33,5 +30,4 @@ Word2Vec Implementation
 - Subsampling
   - Read(preprocess) corpus and make dictionary
   - Subsample corpus in every epoch
-- Due : 4. 28.
-
+Due : 4. 28.
