@@ -83,8 +83,8 @@ def word2vec_trainer(train_seq, numwords, stats, mode="CBOW", dimension=100, lea
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
-    W_in = torch.randn(numwords, dimension) / (dimension**0.5)
-    W_out = torch.randn(numwords, dimension) / (dimension**0.5)
+    W_in = torch.randn(numwords, dimension).cuda() / (dimension**0.5)
+    W_out = torch.randn(numwords, dimension).cuda() / (dimension**0.5)
     i=0
     losses=[]
 
