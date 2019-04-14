@@ -18,9 +18,13 @@ def skipgram(centerWord, contextWord, inputMatrix, outputMatrix):
 # grad_out : Gradient of outputMatrix (type:torch.tesnor(V,D))          #
 #########################################################################
 
-    loss = None
-    grad_in = None
-    grad_out = None
+    loss = torch.zeros(1)
+    grad_in = torch.zeros(inputMatrix.size()[1])
+    grad_out = torch.zeros(outputMatrix.size())
+
+    vec = inputMatrix[centerWord]
+    #z = torch.mm()
+
 
     return loss, grad_in, grad_out
 
