@@ -9,11 +9,11 @@ Multi-layer Perceptron
 - Implement above 3 components at NN.py
 
 ## Assignment 2 (Due : 4. 14.)
-- Word2Vec Implementation
-  - CBOW and Skip-gram
-    - Forward path
-    - Backward path
-    - Return : cost value and gradient of two word vectors
+Word2Vec Implementation
+- CBOW and Skip-gram
+  - Forward path
+  - Backward path
+  - Return : cost value and gradient of two word vectors
 
 ## Assignment 3 (Due : 4. 28.)
 Word2Vec Implementation
