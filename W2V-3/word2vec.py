@@ -8,7 +8,7 @@ def Analogical_Reasoning_Task(embedding):
 #######################  Input  #########################
 # embedding : Word embedding (type:torch.tesnor(V,D))   #
 #########################################################
-    
+
     pass
 
 def subsampling(text):
@@ -23,7 +23,7 @@ def subsampling(text):
     subsampled=None
     return subsampled
 
-def skipgram_HS(centerWord, contextCode inputMatrix, outputMatrix):
+def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
 ################################  Input  ##########################################
 # centerWord : Index of a centerword (type:int)                                   #
 # contextCode : Code of a contextword (type:str)                                  #
@@ -155,7 +155,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, stats, mode="CBOW",
                     W_in[inputs] -= learning_rate*G_in.squeeze()
                     W_out[activated] -= learning_rate*G_out
 
-                
+
             else:
                 print("Unkwnown mode : "+mode)
                 exit()
@@ -230,7 +230,8 @@ def main():
 
     #Make training set
     print("build training set...")
-    train_set = []
+    input_set = []
+    target_set = []
     window_size = 5
     if mode=="CBOW":
         for j in range(len(words)):
