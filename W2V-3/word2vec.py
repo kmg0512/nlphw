@@ -4,6 +4,12 @@ from collections import Counter
 import argparse
 from huffman import HuffmanCoding
 
+def sigmoid(x):
+    return 1 / (1 + torch.exp(x))
+
+def bti(exp):
+    return 1 if exp else -1
+
 def Analogical_Reasoning_Task(embedding):
 #######################  Input  #########################
 # embedding : Word embedding (type:torch.tesnor(V,D))   #
@@ -36,6 +42,20 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
     loss = None
     grad_in = None
     grad_out = None
+
+    V, D = inputMatrix.size()
+    _, K, D = outputMatrix.size()
+
+    outputMatrix = outputMatrix.reshape(K, D)
+
+    inputVector = inputMatrix[centerWord].reshape(D, 1)
+
+    p = 1
+    for j in range(len(contextCode)):
+        p *= sigmoid(bti(contextCode[j] == '0') * torch.mm(outputMatrix[0], inputVector))
+
+    y = None
+
 
     return loss, grad_in, grad_out
 
