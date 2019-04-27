@@ -11,13 +11,9 @@ def Analogical_Reasoning_Task(embedding):
     
     pass
 
-def subsampling(text):
-################################  Input  #########################################
-# text : Original text (type:str)                                                #
-##################################################################################
-
+def subsampling(word_seq):
 ###############################  Output  #########################################
-# subsampled : Subsampled text (type:str)                                        #
+# subsampled : Subsampled sequence                                               #
 ##################################################################################
 
     subsampled=None
@@ -216,8 +212,9 @@ def main():
 
     #Code dict for hierarchical softmax
     freqdict={}
+    freqdict[0]=10
     for word in vocab:
-        freqdict[word]=stats[word]
+        freqdict[w2i[word]]=stats[word]
     codedict = HuffmanCoding().build(freqdict)
 
     #Frequency table for negative sampling
