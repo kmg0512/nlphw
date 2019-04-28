@@ -8,12 +8,60 @@ import time
 def sigmoid(x):
     return 1 / (1 + torch.exp(-x))
 
-def Analogical_Reasoning_Task(embedding):
+def cosine(v1, v2):
+    return torch.sum(v1 * v2) / torch.sqrt(torch.sum(v1 * v1) * torch.sum(v2 * v2))
+
+def Analogical_Reasoning_Task(embedding, w2i):
 #######################  Input  #########################
 # embedding : Word embedding (type:torch.tesnor(V,D))   #
 #########################################################
 
     questions = open("questions-words.txt", 'r').readlines()
+
+    total = [0]
+    answer = [0]
+    cnt = -1
+    for q in questions:
+        if q[0] == ':':
+            if cnt != -1:
+                print("Result : ", answer[cnt], '/', total[cnt])
+                print("Accuracy : ", answer[cnt] / total[cnt] * 100, '%')
+                print()
+                total.append(0)
+                answer.append(0)
+
+            print(q[2:])
+            cnt += 1
+        else:
+            flag = False
+            for key in q.split():
+                if w2i.get(key) == None:
+                    flag = True
+            if flag:
+                total[cnt] += 1
+                continue
+            
+            [x1, y1, x2, y2] = q.split()
+            
+            vx1 = embedding[w2i[x1]]
+            vy1 = embedding[w2i[y1]]
+            vx2 = embedding[w2i[x2]]
+
+            vector = vx1 - vx2 + vy1
+
+            distance = [(cosine(vector, embedding[w]), w) for w in range(embedding.size()[0])]
+            closest = sorted(distance, key=lambda t: t[0], reverse=True)[:10]
+
+            if sum(map(lambda x: (x[1] == y2), closest)) > 0:
+                answer[cnt] += 1
+            total[cnt] += 1
+    
+    print("Result : ", answer[cnt], '/', total[cnt])
+    print("Accuracy : ", answer[cnt] / total[cnt] * 100, '%')
+    print()
+    print("Total Result : ", sum(answer), '/', sum(total))
+    print("Total Accuracy : ", sum(answer) / sum(total) * 100, '%')
+
     pass
 
 def subsampling(word_seq):
@@ -163,11 +211,6 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
     print()
     stats = torch.LongTensor(stats)
 
-    if torch.cuda.is_available():
-        W_in = W_in.cuda()
-        W_out = W_out.cuda()
-        stats = stats.cuda()
-
     times = []
 
     for _ in range(epoch):
@@ -216,13 +259,15 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
             if i%50000==0:
                 avg_loss=sum(losses)/len(losses)
                 elapsed_time = time.time() - start_time
-                print("Loss : %f, Time : %fSec" %(avg_loss, elapsed_time,))
+                print("Loss : %f, Time : %f sec" %(avg_loss, elapsed_time,))
                 losses=[]
                 start_time = time.time()
                 times.append(elapsed_time)
 
-    print("Total Time : ", sum(times))
-    print("Average Time : ", sum(times) / len(times))
+    print()
+    print("Total Time : ", sum(times), " sec")
+    print("Average Time : ", sum(times) / len(times), " sec")
+    print()
 
     return W_in, W_out
 
@@ -322,6 +367,6 @@ def main():
 
     #Training section
     emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.01)
-    Analogical_Reasoning_Task(emb)
+    Analogical_Reasoning_Task(emb, w2i)
 
 main()
