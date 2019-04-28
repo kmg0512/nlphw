@@ -7,9 +7,6 @@ from huffman import HuffmanCoding
 def sigmoid(x):
     return 1 / (1 + torch.exp(x))
 
-def bti(exp):
-    return 1 if exp else -1
-
 def Analogical_Reasoning_Task(embedding):
 #######################  Input  #########################
 # embedding : Word embedding (type:torch.tesnor(V,D))   #
@@ -25,7 +22,7 @@ def subsampling(word_seq):
     subsampled=None
     return subsampled
 
-def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
+def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix, hsTree):
 ################################  Input  ##########################################
 # centerWord : Index of a centerword (type:int)                                   #
 # contextCode : Code of a contextword (type:str)                                  #
@@ -52,10 +49,12 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
 
     p = 1
     for j in range(len(contextCode)):
-        p *= sigmoid(bti(contextCode[j] == '0') * torch.mm(outputMatrix[0], inputVector))
+        bti = 1 if contextCode[j] == '0' else -1
+        vnwj = outputMatrix[hsTree[contextCode[:j]]].reshape(1, D)
+        p *= sigmoid(bti * torch.mm(vnwj, inputVector))
 
-    y = None
-
+    loss = -torch.log(p).reshape(1)
+    print(loss)
 
     return loss, grad_in, grad_out
 
@@ -122,7 +121,7 @@ def CBOW_NS(contextWords, inputMatrix, outputMatrix):
     return loss, grad_in, grad_out
 
 
-def word2vec_trainer(input_seq, target_seq, numwords, codes, stats, mode="CBOW", NS=20, dimension=100, learning_rate=0.025, epoch=3):
+def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode="CBOW", NS=20, dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -160,7 +159,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, stats, mode="CBOW",
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
                     activated = None
-                    L, G_in, G_out = skipgram_HS(inputs, codes[output], W_in, W_out[activated])
+                    L, G_in, G_out = skipgram_HS(inputs, codes[output], W_in, W_out[activated], nodes)
                     W_in[inputs] -= learning_rate*G_in.squeeze()
                     W_out[activated] -= learning_rate*G_out
                 else:
@@ -235,7 +234,7 @@ def main():
     freqdict[0]=10
     for word in vocab:
         freqdict[w2i[word]]=stats[word]
-    codedict = HuffmanCoding().build(freqdict)
+    codedict, nodecode = HuffmanCoding().build(freqdict)
 
     #Frequency table for negative sampling
     freqtable = [0,0,0]
@@ -278,7 +277,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.01)
+    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.01)
     Analogical_Reasoning_Task(emb)
 
 main()

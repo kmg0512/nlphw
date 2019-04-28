@@ -22,6 +22,9 @@ class HuffmanCoding:
 		self.codes = {}
 		self.reverse_mapping = {}
 
+		self.inner_node = {}
+		self.cnt = 0
+
 	def make_heap(self, frequency):
 		for key in frequency:
 			node = HeapNode(key, frequency[key])
@@ -48,6 +51,9 @@ class HuffmanCoding:
 			self.reverse_mapping[current_code] = root.char
 			return
 
+		self.inner_node[current_code] = self.cnt
+		self.cnt += 1
+
 		self.make_codes_helper(root.left, current_code + "0")
 		self.make_codes_helper(root.right, current_code + "1")
 
@@ -63,4 +69,4 @@ class HuffmanCoding:
 		self.merge_nodes()
 		self.make_codes()
 
-		return self.codes
+		return self.codes, self.inner_node
