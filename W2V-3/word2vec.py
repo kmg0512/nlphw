@@ -5,7 +5,7 @@ import argparse
 from huffman import HuffmanCoding
 
 def sigmoid(x):
-    return 1 / (1 + torch.exp(x))
+    return 1 / (1 + torch.exp(-x))
 
 def Analogical_Reasoning_Task(embedding):
 #######################  Input  #########################
@@ -22,7 +22,7 @@ def subsampling(word_seq):
     subsampled=None
     return subsampled
 
-def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix, hsTree):
+def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
 ################################  Input  ##########################################
 # centerWord : Index of a centerword (type:int)                                   #
 # contextCode : Code of a contextword (type:str)                                  #
@@ -36,12 +36,12 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix, hsTree):
 # grad_out : Gradient of outputMatrix (type:torch.tesnor(K,D))                    #
 ###################################################################################
 
-    loss = None
-    grad_in = None
-    grad_out = None
-
     V, D = inputMatrix.size()
-    _, K, D = outputMatrix.size()
+    K, _ = outputMatrix.size()
+
+    loss = None
+    grad_in = torch.zeros(1, D)
+    grad_out = torch.ones(K, D)
 
     outputMatrix = outputMatrix.reshape(K, D)
 
@@ -50,11 +50,17 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix, hsTree):
     p = 1
     for j in range(len(contextCode)):
         bti = 1 if contextCode[j] == '0' else -1
-        vnwj = outputMatrix[hsTree[contextCode[:j]]].reshape(1, D)
-        p *= sigmoid(bti * torch.mm(vnwj, inputVector))
+        vj = outputMatrix[j].reshape(1, D)
+        vh = torch.mm(vj, inputVector)
+        p *= sigmoid(bti * vh)
+
+        tj = 1 if bti == 1 else 0
+        grad = sigmoid(vh) - tj
+
+        grad_out[j] *= (grad * inputVector).reshape(D)
+        grad_in += grad * vj
 
     loss = -torch.log(p).reshape(1)
-    print(loss)
 
     return loss, grad_in, grad_out
 
@@ -163,8 +169,8 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 if NS==0:
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                    activated = None
-                    L, G_in, G_out = skipgram_HS(inputs, codes[output], W_in, W_out[activated], nodes)
+                    activated = [nodes[codes[output][:i]] for i in range(len(codes[output]))]
+                    L, G_in, G_out = skipgram_HS(inputs, codes[output], W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in.squeeze()
                     W_out[activated] -= learning_rate*G_out
                 else:
