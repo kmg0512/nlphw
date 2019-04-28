@@ -134,6 +134,11 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
     print()
     stats = torch.LongTensor(stats)
 
+    if torch.cuda.is_available():
+        W_in = W_in.cuda()
+        W_out = W_out.cuda()
+        stats = stats.cuda()
+
     for _ in range(epoch):
         #Training word2vec using SGD(Batch size : 1)
         for inputs, output in zip(input_seq,target_seq):
