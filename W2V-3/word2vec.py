@@ -3,6 +3,7 @@ from random import shuffle
 from collections import Counter
 import argparse
 from huffman import HuffmanCoding
+import time
 
 def sigmoid(x):
     return 1 / (1 + torch.exp(-x))
@@ -43,8 +44,6 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
     grad_in = torch.zeros(1, D)
     grad_out = torch.ones(K, D)
 
-    outputMatrix = outputMatrix.reshape(K, D)
-
     inputVector = inputMatrix[centerWord].reshape(D, 1)
 
     p = 1
@@ -79,6 +78,9 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
 # grad_out : Gradient of outputMatrix (type:torch.tesnor(K,D))                    #
 ###################################################################################
 
+    V, D = inputMatrix.size()
+    K, _ = outputMatrix.size()
+
     loss = None
     grad_in = None
     grad_out = None
@@ -100,9 +102,29 @@ def CBOW_HS(contextWords, centerCode, inputMatrix, outputMatrix):
 # grad_out : Gradient of outputMatrix (type:torch.tesnor(K,D))                    #
 ###################################################################################
 
+    V, D = inputMatrix.size()
+    K, _ = outputMatrix.size()
+
     loss = None
-    grad_in = None
-    grad_out = None
+    grad_in = torch.zeros(1, D)
+    grad_out = torch.ones(K, D)
+
+    inputVector = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True)
+
+    p = 1
+    for j in range(len(centerCode)):
+        bti = 1 if centerCode[j] == '0' else -1
+        vj = outputMatrix[j].reshape(1, D)
+        vh = torch.mm(vj, inputVector)
+        p *= sigmoid(bti * vh)
+
+        tj = 1 if bti == 1 else 0
+        grad = sigmoid(vh) - tj
+
+        grad_out[j] *= (grad * inputVector).reshape(D)
+        grad_in += grad * vj
+
+    loss = -torch.log(p).reshape(1)
 
     return loss, grad_in, grad_out
 
@@ -153,7 +175,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 if NS==0:
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                    activated = None
+                    activated = [nodes[codes[output][:i]] for i in range(len(codes[output]))]
                     L, G_in, G_out = CBOW_HS(inputs, codes[output], W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in
                     W_out[activated] -= learning_rate*G_out
