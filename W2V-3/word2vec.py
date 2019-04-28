@@ -13,6 +13,7 @@ def Analogical_Reasoning_Task(embedding):
 # embedding : Word embedding (type:torch.tesnor(V,D))   #
 #########################################################
 
+    questions = open("questions-words.txt", 'r').readlines()
     pass
 
 def subsampling(word_seq):
@@ -167,7 +168,11 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
         W_out = W_out.cuda()
         stats = stats.cuda()
 
+    times = []
+
     for _ in range(epoch):
+        start_time = time.time()
+
         #Training word2vec using SGD(Batch size : 1)
         for inputs, output in zip(input_seq,target_seq):
             i+=1
@@ -209,9 +214,15 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 exit()
             losses.append(L.item())
             if i%50000==0:
-            	avg_loss=sum(losses)/len(losses)
-            	print("Loss : %f" %(avg_loss,))
-            	losses=[]
+                avg_loss=sum(losses)/len(losses)
+                elapsed_time = time.time() - start_time
+                print("Loss : %f, Time : %fSec" %(avg_loss, elapsed_time,))
+                losses=[]
+                start_time = time.time()
+                times.append(elapsed_time)
+
+    print("Total Time : ", sum(times))
+    print("Average Time : ", sum(times) / len(times))
 
     return W_in, W_out
 
