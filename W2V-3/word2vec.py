@@ -1,9 +1,10 @@
 import torch
-from random import shuffle
+from random import *
 from collections import Counter
 import argparse
 from huffman import HuffmanCoding
 import time
+import math
 
 def sigmoid(x):
     return 1 / (1 + torch.exp(-x))
@@ -24,8 +25,8 @@ def Analogical_Reasoning_Task(embedding, w2i):
     for q in questions:
         if q[0] == ':':
             if cnt != -1:
-                print("Result : ", answer[cnt], '/', total[cnt])
-                print("Accuracy : ", answer[cnt] / total[cnt] * 100, '%')
+                print("Result:", answer[cnt], '/', total[cnt])
+                print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
                 print()
                 total.append(0)
                 answer.append(0)
@@ -40,9 +41,9 @@ def Analogical_Reasoning_Task(embedding, w2i):
             if flag:
                 total[cnt] += 1
                 continue
-            
+
             [x1, y1, x2, y2] = q.split()
-            
+
             vx1 = embedding[w2i[x1]]
             vy1 = embedding[w2i[y1]]
             vx2 = embedding[w2i[x2]]
@@ -52,15 +53,15 @@ def Analogical_Reasoning_Task(embedding, w2i):
             distance = [(cosine(vector, embedding[w]), w) for w in range(embedding.size()[0])]
             closest = sorted(distance, key=lambda t: t[0], reverse=True)[:10]
 
-            if sum(map(lambda x: (x[1] == y2), closest)) > 0:
+            if sum(map(lambda x: (x[1] == w2i[y2]), closest)) > 0:
                 answer[cnt] += 1
             total[cnt] += 1
-    
-    print("Result : ", answer[cnt], '/', total[cnt])
-    print("Accuracy : ", answer[cnt] / total[cnt] * 100, '%')
+
+    print("Result:", answer[cnt], '/', total[cnt])
+    print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
     print()
-    print("Total Result : ", sum(answer), '/', sum(total))
-    print("Total Accuracy : ", sum(answer) / sum(total) * 100, '%')
+    print("Total Result:", sum(answer), '/', sum(total))
+    print("Total Accuracy:", round(sum(answer) / sum(total) * 100, 3), '%')
 
     pass
 
@@ -69,7 +70,16 @@ def subsampling(word_seq):
 # subsampled : Subsampled sequence                                               #
 ##################################################################################
 
-    subsampled=None
+    subsampled=[]
+    t = 10e-5
+    f = Counter(word_seq)
+    l = len(word_seq)
+
+    for w in word_seq:
+        p = 1 - math.sqrt(t / (f[w] / l))
+        if p <= random():
+            subsampled.append(w)
+
     return subsampled
 
 def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
@@ -133,7 +143,20 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
 
     loss = None
     grad_in = None
-    grad_out = None
+    grad_out = torch.Tensor(K, D)
+
+    inputVector = inputMatrix[centerWord]
+
+    p = sigmoid(torch.mm(outputMatrix[0].reshape(1, D), inputVector.reshape(D, 1)))
+    loss = -torch.log(p)
+    grad_in = -(1 - p) * outputMatrix[0]
+    grad_out[0] = -(1 - p) * inputVector
+
+    for k in range(1, K):
+        q = sigmoid(-torch.mm(outputMatrix[k].reshape(1, D), inputVector.reshape(D, 1)))
+        loss -= torch.log(q)
+        grad_in += (1 - q) * outputMatrix[k]
+        grad_out[k] = (1 - q) * inputVector
 
     return loss, grad_in, grad_out
 
@@ -192,9 +215,25 @@ def CBOW_NS(contextWords, inputMatrix, outputMatrix):
 # grad_out : Gradient of outputMatrix (type:torch.tesnor(K,D))                    #
 ###################################################################################
 
+    V, D = inputMatrix.size()
+    K, _ = outputMatrix.size()
+
     loss = None
     grad_in = None
-    grad_out = None
+    grad_out = torch.Tensor(K, D)
+
+    inputVector = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True)
+
+    p = sigmoid(torch.mm(outputMatrix[0].reshape(1, D), inputVector))
+    loss = -torch.log(p)
+    grad_in = -(1 - p) * outputMatrix[0]
+    grad_out[0] = -(1 - p) * inputVector.reshape(D)
+
+    for k in range(1, K):
+        q = sigmoid(-torch.mm(outputMatrix[k].reshape(1, D), inputVector))
+        loss -= torch.log(q)
+        grad_in += (1 - q) * outputMatrix[k]
+        grad_out[k] = (1 - q) * inputVector.reshape(D)
 
     return loss, grad_in, grad_out
 
@@ -210,7 +249,6 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
     print("# of training samples")
     print(len(input_seq))
     print()
-    stats = torch.LongTensor(stats).cuda()
 
     times = []
 
@@ -231,7 +269,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 else:
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                    activated = None
+                    activated = [output] + sample(stats, NS)
                     L, G_in, G_out = CBOW_NS(inputs, W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in
                     W_out[activated] -= learning_rate*G_out
@@ -247,7 +285,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 else:
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                    activated = None
+                    activated = [output] + sample(stats, NS)
                     L, G_in, G_out = skipgram_NS(inputs, W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in.squeeze()
                     W_out[activated] -= learning_rate*G_out
@@ -297,7 +335,7 @@ def main():
         exit()
 
     print("preprocessing...")
-    corpus = text.split()
+    corpus = subsampling(text.split())
     stats = Counter(corpus)
     words = []
 
@@ -367,7 +405,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.01)
+    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
     Analogical_Reasoning_Task(emb, w2i)
 
 main()
