@@ -24,8 +24,8 @@ def Analogical_Reasoning_Task(embedding, w2i):
     for q in questions:
         if q[0] == ':':
             if cnt != -1:
-                print("Result : ", answer[cnt], '/', total[cnt])
-                print("Accuracy : ", answer[cnt] / total[cnt] * 100, '%')
+                print("Result:", answer[cnt], '/', total[cnt])
+                print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
                 print()
                 total.append(0)
                 answer.append(0)
@@ -40,9 +40,9 @@ def Analogical_Reasoning_Task(embedding, w2i):
             if flag:
                 total[cnt] += 1
                 continue
-            
+
             [x1, y1, x2, y2] = q.split()
-            
+
             vx1 = embedding[w2i[x1]]
             vy1 = embedding[w2i[y1]]
             vx2 = embedding[w2i[x2]]
@@ -52,15 +52,15 @@ def Analogical_Reasoning_Task(embedding, w2i):
             distance = [(cosine(vector, embedding[w]), w) for w in range(embedding.size()[0])]
             closest = sorted(distance, key=lambda t: t[0], reverse=True)[:10]
 
-            if sum(map(lambda x: (x[1] == y2), closest)) > 0:
+            if sum(map(lambda x: (x[1] == w2i[y2]), closest)) > 0:
                 answer[cnt] += 1
             total[cnt] += 1
-    
-    print("Result : ", answer[cnt], '/', total[cnt])
-    print("Accuracy : ", answer[cnt] / total[cnt] * 100, '%')
+
+    print("Result:", answer[cnt], '/', total[cnt])
+    print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
     print()
-    print("Total Result : ", sum(answer), '/', sum(total))
-    print("Total Accuracy : ", sum(answer) / sum(total) * 100, '%')
+    print("Total Result:", sum(answer), '/', sum(total))
+    print("Total Accuracy:", round(sum(answer) / sum(total) * 100, 3), '%')
 
     pass
 
@@ -69,7 +69,15 @@ def subsampling(word_seq):
 # subsampled : Subsampled sequence                                               #
 ##################################################################################
 
-    subsampled=None
+    subsampled=[]
+    t = 10e-5
+    f = Counter(word_seq)
+
+    for w in word_seq:
+        p = 1 - torch.sqrt(t / f[w])
+        if p <= t:
+            subsampled.append(w)
+
     return subsampled
 
 def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
@@ -296,7 +304,7 @@ def main():
         exit()
 
     print("preprocessing...")
-    corpus = text.split()
+    corpus = subsampling(text.split())
     stats = Counter(corpus)
     words = []
 
