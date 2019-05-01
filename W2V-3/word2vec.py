@@ -142,7 +142,20 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
 
     loss = None
     grad_in = None
-    grad_out = None
+    grad_out = torch.Tensor(K, D)
+
+    inputVector = inputMatrix[centerWord]
+
+    p = sigmoid(torch.mm(outputMatrix[0].reshape(1, D), inputVector.reshape(D, 1)))
+    loss = -torch.log(p)
+    grad_in = -(1 - p) * outputMatrix[0]
+    grad_out[0] = -(1 - p) * inputVector
+
+    for k in range(1, K):
+        q = sigmoid(-torch.mm(outputMatrix[k].reshape(1, D), inputVector.reshape(D, 1)))
+        loss -= torch.log(q)
+        grad_in += (1 - q) * outputMatrix[k]
+        grad_out[k] = (1 - q) * inputVector
 
     return loss, grad_in, grad_out
 
@@ -206,7 +219,20 @@ def CBOW_NS(contextWords, inputMatrix, outputMatrix):
 
     loss = None
     grad_in = None
-    grad_out = None
+    grad_out = torch.Tensor(K, D)
+
+    inputVector = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True)
+
+    p = sigmoid(torch.mm(outputMatrix[0].reshape(1, D), inputVector))
+    loss = -torch.log(p)
+    grad_in = -(1 - p) * outputMatrix[0]
+    grad_out[0] = -(1 - p) * inputVector.reshape(D)
+
+    for k in range(1, K):
+        q = sigmoid(-torch.mm(outputMatrix[k].reshape(1, D), inputVector))
+        loss -= torch.log(q)
+        grad_in += (1 - q) * outputMatrix[k]
+        grad_out[k] = (1 - q) * inputVector.reshape(D)
 
     return loss, grad_in, grad_out
 
@@ -222,7 +248,6 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
     print("# of training samples")
     print(len(input_seq))
     print()
-    stats = torch.LongTensor(stats)
 
     times = []
 
@@ -244,9 +269,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 else:
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                    activated = []
-                    activated.append(output)
-                    activated.append(sample(range(len(stats)), NS))
+                    activated = [output] + sample(stats, NS)
                     L, G_in, G_out = CBOW_NS(inputs, W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in
                     W_out[activated] -= learning_rate*G_out
@@ -263,9 +286,7 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                 else:
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                    activated = []
-                    activated.append(output)
-                    activated.append(sample(range(len(stats)), NS))
+                    activated = [output] + sample(stats, NS)
                     L, G_in, G_out = skipgram_NS(inputs, W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in.squeeze()
                     W_out[activated] -= learning_rate*G_out
