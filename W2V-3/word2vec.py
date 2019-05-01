@@ -100,14 +100,14 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
     K, _ = outputMatrix.size()
 
     loss = None
-    grad_in = inputMatrix[centerWord].reshape(1, D) * 0
-    grad_out = outputMatrix * 0 + 1
+    grad_in = torch.zeros(1, D)
+    grad_out = torch.ones(K, D)
 
 
     inputVector = inputMatrix[centerWord].reshape(D, 1)
 
     p = 1
-    for j in range(len(contextCode)):
+    for j in range(K):
         bti = 1 if contextCode[j] == '0' else -1
         vj = outputMatrix[j].reshape(1, D)
         vh = torch.mm(vj, inputVector)
@@ -179,13 +179,13 @@ def CBOW_HS(contextWords, centerCode, inputMatrix, outputMatrix):
     K, _ = outputMatrix.size()
 
     loss = None
-    grad_in = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True) * 0
-    grad_out = outputMatrix * 0 + 1
+    grad_in = torch.zeros(1, D)
+    grad_out = torch.ones(K, D)
 
     inputVector = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True)
 
     p = 1
-    for j in range(len(centerCode)):
+    for j in range(K):
         bti = 1 if centerCode[j] == '0' else -1
         vj = outputMatrix[j].reshape(1, D)
         vh = torch.mm(vj, inputVector)
@@ -242,8 +242,8 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
-    W_in = torch.randn(numwords, dimension).cuda() / (dimension**0.5)
-    W_out = torch.randn(numwords, dimension).cuda() / (dimension**0.5)
+    W_in = torch.randn(numwords, dimension) / (dimension**0.5)
+    W_out = torch.randn(numwords, dimension) / (dimension**0.5)
     i=0
     losses=[]
     print("# of training samples")
