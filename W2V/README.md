@@ -1,4 +1,4 @@
-# Natural Language Processing Assignments
+# Word2Vec
 
 
 
