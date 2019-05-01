@@ -262,7 +262,6 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
                     activated = [nodes[codes[output][:i]] for i in range(len(codes[output]))]
-                    activated.append(output)
                     L, G_in, G_out = CBOW_HS(inputs, codes[output], W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in
                     W_out[activated] -= learning_rate*G_out
@@ -279,7 +278,6 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
                     #Only use the activated rows of the weight matrix
                     #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
                     activated = [nodes[codes[output][:i]] for i in range(len(codes[output]))]
-                    activated.append(output)
                     L, G_in, G_out = skipgram_HS(inputs, codes[output], W_in, W_out[activated])
                     W_in[inputs] -= learning_rate*G_in.squeeze()
                     W_out[activated] -= learning_rate*G_out
@@ -406,7 +404,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.01)
+    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
     Analogical_Reasoning_Task(emb, w2i)
 
 main()
