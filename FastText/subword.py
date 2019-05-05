@@ -118,7 +118,7 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
     return loss, grad_in, grad_out
 
 
-def word2vec_trainer(input_seq, target_seq, numwords, stats, mode="CBOW", NS=20, dimension=100, learning_rate=0.025, epoch=3):
+def word2vec_trainer(input_seq, target_seq, numwords, stats, NS=20, dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -233,7 +233,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
+    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
     Analogical_Reasoning_Task(emb, w2i)
 
 main()
