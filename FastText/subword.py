@@ -2,7 +2,6 @@ import torch
 from random import *
 from collections import Counter
 import argparse
-from huffman import HuffmanCoding
 import time
 import math
 
@@ -82,48 +81,6 @@ def subsampling(word_seq):
 
     return subsampled
 
-def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
-################################  Input  ##########################################
-# centerWord : Index of a centerword (type:int)                                   #
-# contextCode : Code of a contextword (type:str)                                  #
-# inputMatrix : Weight matrix of input (type:torch.tesnor(V,D))                   #
-# outputMatrix : Activated weight matrix of output (type:torch.tesnor(K,D))       #
-###################################################################################
-
-###############################  Output  ##########################################
-# loss : Loss value (type:torch.tensor(1))                                        #
-# grad_in : Gradient of inputMatrix (type:torch.tensor(1,D))                      #
-# grad_out : Gradient of outputMatrix (type:torch.tesnor(K,D))                    #
-###################################################################################
-
-    V, D = inputMatrix.size()
-    K, _ = outputMatrix.size()
-
-    loss = None
-    grad_in = torch.zeros(1, D)
-    grad_out = torch.ones(K, D)
-
-
-    inputVector = inputMatrix[centerWord].reshape(D, 1)
-
-    p = 1
-    for j in range(K):
-        bti = 1 if contextCode[j] == '0' else -1
-        vj = outputMatrix[j].reshape(1, D)
-        vh = torch.mm(vj, inputVector)
-        p *= sigmoid(bti * vh)
-
-        tj = 1 if bti == 1 else 0
-        grad = sigmoid(vh) - tj
-
-        grad_out[j] = (grad * inputVector).reshape(D)
-        grad_in += grad * vj
-
-    loss = -torch.log(p).reshape(1)
-
-    return loss, grad_in, grad_out
-
-
 
 def skipgram_NS(centerWord, inputMatrix, outputMatrix):
 ################################  Input  ##########################################
@@ -161,7 +118,7 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
     return loss, grad_in, grad_out
 
 
-def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode="CBOW", NS=20, dimension=100, learning_rate=0.025, epoch=3):
+def word2vec_trainer(input_seq, target_seq, numwords, stats, mode="CBOW", NS=20, dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -181,20 +138,12 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
         #Training word2vec using SGD(Batch size : 1)
         for inputs, output in zip(input_seq,target_seq):
             i+=1
-            if NS==0:
-                #Only use the activated rows of the weight matrix
-                #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                activated = [nodes[codes[output][:i]] for i in range(len(codes[output]))]
-                L, G_in, G_out = skipgram_HS(inputs, codes[output], W_in, W_out[activated])
-                W_in[inputs] -= learning_rate*G_in.squeeze()
-                W_out[activated] -= learning_rate*G_out
-            else:
-                #Only use the activated rows of the weight matrix
-                #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-                activated = [output] + sample(stats, NS)
-                L, G_in, G_out = skipgram_NS(inputs, W_in, W_out[activated])
-                W_in[inputs] -= learning_rate*G_in.squeeze()
-                W_out[activated] -= learning_rate*G_out
+            #Only use the activated rows of the weight matrix
+            #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
+            activated = [output] + sample(stats, NS)
+            L, G_in, G_out = skipgram_NS(inputs, W_in, W_out[activated])
+            W_in[inputs] -= learning_rate*G_in.squeeze()
+            W_out[activated] -= learning_rate*G_out
 
             losses.append(L.item())
             if i%50000==0:
@@ -220,7 +169,6 @@ def main():
     parser.add_argument('part', metavar='partition', type=str,
                         help='"part" if you want to train on a part of corpus, "full" if you want to train on full corpus')
     args = parser.parse_args()
-    mode = args.mode
     part = args.part
     ns = args.ns
 
@@ -256,14 +204,6 @@ def main():
     for k,v in w2i.items():
         i2w[v]=k
 
-
-    #Code dict for hierarchical softmax
-    freqdict={}
-    freqdict[0]=10
-    for word in vocab:
-        freqdict[w2i[word]]=stats[word]
-    codedict, nodecode = HuffmanCoding().build(freqdict)
-
     #Frequency table for negative sampling
     freqtable = [0,0,0]
     for k,v in stats.items():
@@ -293,7 +233,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
+    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
     Analogical_Reasoning_Task(emb, w2i)
 
 main()
