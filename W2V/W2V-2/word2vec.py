@@ -6,7 +6,7 @@ import argparse
 def softmax(o):
     e = torch.exp(o)
     softmax = e / torch.sum(e)
-    
+
     return softmax
 
 def CrossEntropy(y, t):
@@ -43,7 +43,7 @@ def skipgram(centerWord, contextWord, inputMatrix, outputMatrix):
 
     grad_in = torch.mm(e.t(), outputMatrix)
     grad_out = torch.mm(e, h.t())
-    
+
     return loss, grad_in, grad_out
 
 def CBOW(centerWord, contextWords, inputMatrix, outputMatrix):
@@ -105,7 +105,7 @@ def word2vec_trainer(train_seq, numwords, stats, mode="CBOW", dimension=100, lea
             contextInds = contexts
             if mode=="CBOW":
                 L, G_in, G_out = CBOW(centerInd, contextInds, W_in, W_out)
-                
+
                 W_in[contextInds] -= learning_rate*G_in
                 W_out -= learning_rate*G_out
 
@@ -113,7 +113,7 @@ def word2vec_trainer(train_seq, numwords, stats, mode="CBOW", dimension=100, lea
             elif mode=="SG":
             	for contextInd in contextInds:
 	                L, G_in, G_out = skipgram(centerInd, contextInd, W_in, W_out)
-	                
+
 	                W_in[centerInd] -= learning_rate*G_in.squeeze()
 	                W_out -= learning_rate*G_out
 
@@ -135,7 +135,7 @@ def sim(testword, word2ind, ind2word, matrix):
     inputVector = matrix[wi].reshape(1,-1)/length[wi]
     sim = (inputVector@matrix.t())[0]/length
     values, indices = sim.squeeze().topk(5)
-    
+
     print()
     print("===============================================")
     print("The most similar words to \"" + testword + "\"")
@@ -216,7 +216,7 @@ def main():
 
     #Training section
     emb,_ = word2vec_trainer(train_set, len(w2i), freqtable, mode=mode, dimension=64, epoch=1, learning_rate=0.05)
-    
+
     #Print similar words
     testwords = ["one", "are", "he", "have", "many", "first", "all", "world", "people", "after"]
     for tw in testwords:
