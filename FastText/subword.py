@@ -8,61 +8,6 @@ import math
 def sigmoid(x):
     return 1 / (1 + torch.exp(-x))
 
-def cosine(v1, v2):
-    return torch.sum(v1 * v2) / torch.sqrt(torch.sum(v1 * v1) * torch.sum(v2 * v2))
-
-def Analogical_Reasoning_Task(embedding, w2i):
-#######################  Input  #########################
-# embedding : Word embedding (type:torch.tesnor(V,D))   #
-#########################################################
-
-    questions = open("questions-words.txt", 'r').readlines()
-
-    total = [0]
-    answer = [0]
-    cnt = -1
-    for q in questions:
-        if q[0] == ':':
-            if cnt != -1:
-                print("Result:", answer[cnt], '/', total[cnt])
-                print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
-                print()
-                total.append(0)
-                answer.append(0)
-
-            print(q[2:])
-            cnt += 1
-        else:
-            flag = False
-            for key in q.split():
-                if w2i.get(key) == None:
-                    flag = True
-            if flag:
-                total[cnt] += 1
-                continue
-
-            [x1, y1, x2, y2] = q.split()
-
-            vx1 = embedding[w2i[x1]]
-            vy1 = embedding[w2i[y1]]
-            vx2 = embedding[w2i[x2]]
-
-            vector = vx1 - vx2 + vy1
-
-            distance = [(cosine(vector, embedding[w]), w) for w in range(embedding.size()[0])]
-            closest = sorted(distance, key=lambda t: t[0], reverse=True)[:10]
-
-            if sum(map(lambda x: (x[1] == w2i[y2]), closest)) > 0:
-                answer[cnt] += 1
-            total[cnt] += 1
-
-    print("Result:", answer[cnt], '/', total[cnt])
-    print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
-    print()
-    print("Total Result:", sum(answer), '/', sum(total))
-    print("Total Accuracy:", round(sum(answer) / sum(total) * 100, 3), '%')
-
-    pass
 
 def subsampling(word_seq):
 ###############################  Output  #########################################
@@ -118,7 +63,7 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
     return loss, grad_in, grad_out
 
 
-def word2vec_trainer(input_seq, target_seq, numwords, stats, NS=20, dimension=100, learning_rate=0.025, epoch=3):
+def subword_embedding_trainer(input_seq, target_seq, numwords, stats, NS=20, dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -162,10 +107,26 @@ def word2vec_trainer(input_seq, target_seq, numwords, stats, NS=20, dimension=10
     return W_in, W_out
 
 
+def sim(testword, word2ind, ind2word, matrix):
+    length = (matrix*matrix).sum(1)**0.5
+    wi = word2ind[testword]
+    inputVector = matrix[wi].reshape(1,-1)/length[wi]
+    sim = (inputVector@matrix.t())[0]/length
+    values, indices = sim.squeeze().topk(5)
+
+    print()
+    print("===============================================")
+    print("The most similar words to \"" + testword + "\"")
+    for ind, val in zip(indices,values):
+        print(ind2word[ind.item()]+":%.3f"%(val,))
+    print("===============================================")
+    print()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Subword Embedding')
     parser.add_argument('ns', metavar='negative_samples', type=int,
-                        help='0 for hierarchical softmax, the other numbers would be the number of negative samples')
+                        help='the number of negative samples')
     parser.add_argument('part', metavar='partition', type=str,
                         help='"part" if you want to train on a part of corpus, "full" if you want to train on full corpus')
     args = parser.parse_args()
@@ -183,7 +144,7 @@ def main():
         exit()
 
     print("preprocessing...")
-    corpus = subsampling(text.split())
+    corpus = subsampling(text.split()) if part == "full" else text.split()
     stats = Counter(corpus)
     words = []
 
@@ -233,7 +194,10 @@ def main():
     print()
 
     #Training section
-    emb,_ = word2vec_trainer(input_set, target_set, len(w2i), freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
-    Analogical_Reasoning_Task(emb, w2i)
+    emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
+
+    testwords = ["narrow-mindedness", "department", "campfires", "knowing", "urbanize", "imperfection", "principality", "abnormal", "secondary", "ungraceful"]
+    for tw in testwords:
+    	sim(tw,w2i,i2w,emb)
 
 main()
