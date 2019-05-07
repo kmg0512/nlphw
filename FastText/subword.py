@@ -154,12 +154,25 @@ def main():
             words.append(word)
     vocab = set(words)
 
+    subvocab = []
+    for word in vocab:
+        for i in range(3, 7):
+            l = len(word)
+            for j in range(-1, l - i + 1):
+                if j == -1:
+                    subvocab.append('<' + word[:i - 1])
+                elif j == l - i + 1:
+                    subvocab.append(word[j:] + '>')
+                else:
+                    subvocab.append(word[j : j + i])
+        subvocab.append('<' + word + '>')
+
     #Give an index number to a word
     w2i = {}
     w2i[" "]=0
     i = 1
-    for word in vocab:
-        w2i[word] = i
+    for subword in subvocab:
+        w2i[subword] = i
         i+=1
     i2w = {}
     for k,v in w2i.items():
@@ -191,7 +204,7 @@ def main():
 
     print("Vocabulary size")
     print(len(w2i))
-    print()
+    print(vocab)
 
     #Training section
     emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
