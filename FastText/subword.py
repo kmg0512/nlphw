@@ -27,7 +27,7 @@ def subsampling(word_seq):
     return subsampled
 
 
-def skipgram_NS(centerWord, inputMatrix, outputMatrix):
+def subword_embedding(centerWord, inputMatrix, outputMatrix):
 ################################  Input  ##########################################
 # centerWord : Index of a centerword (type:int)                                   #
 # inputMatrix : Weight matrix of input (type:torch.tesnor(V,D))                   #
@@ -86,7 +86,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, stats, NS=20, dim
             #Only use the activated rows of the weight matrix
             #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
             activated = [output] + sample(stats, NS)
-            L, G_in, G_out = skipgram_NS(inputs, W_in, W_out[activated])
+            L, G_in, G_out = subword_embedding(inputs, W_in, W_out[activated])
             W_in[inputs] -= learning_rate*G_in.squeeze()
             W_out[activated] -= learning_rate*G_out
 
@@ -154,18 +154,21 @@ def main():
             words.append(word)
     vocab = set(words)
 
-    subvocab = []
+    subwords = []
+    cnt = 0
     for word in vocab:
+        cnt += 1
         for i in range(3, 7):
             l = len(word)
             for j in range(-1, l - i + 1):
                 if j == -1:
-                    subvocab.append('<' + word[:i - 1])
+                    subwords.append('<' + word[:i - 1])
                 elif j == l - i + 1:
-                    subvocab.append(word[j:] + '>')
+                    subwords.append(word[j:] + '>')
                 else:
-                    subvocab.append(word[j : j + i])
-        subvocab.append('<' + word + '>')
+                    subwords.append(word[j : j + i])
+        subwords.append('<' + word + '>')
+    subvocab = set(subwords)
 
     #Give an index number to a word
     w2i = {}
@@ -204,7 +207,7 @@ def main():
 
     print("Vocabulary size")
     print(len(w2i))
-    print(vocab)
+    print()
 
     #Training section
     emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
