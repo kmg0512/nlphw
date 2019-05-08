@@ -2,7 +2,6 @@ import torch
 from random import *
 from collections import Counter
 import argparse
-import time
 import math
 
 
@@ -94,11 +93,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
     print(len(input_seq))
     print()
 
-    times = []
-
     for _ in range(epoch):
-        start_time = time.time()
-
         #Training word2vec using SGD(Batch size : 1)
         for inputs, outputs in zip(input_seq,target_seq):
             #Only use the activated rows of the weight matrix
@@ -114,16 +109,8 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
 
                 if i%2000==0:
                     avg_loss=sum(losses)/len(losses)
-                    elapsed_time = time.time() - start_time
-                    print("Loss : %f, Time : %f sec" %(avg_loss, elapsed_time,))
+                    print("Loss : %f" %(avg_loss,))
                     losses=[]
-                    start_time = time.time()
-                    times.append(elapsed_time)
-
-    print()
-    print("Total Time : ", sum(times), " sec")
-    print("Average Time : ", sum(times) / len(times), " sec")
-    print()
 
     return W_in, W_out
 
