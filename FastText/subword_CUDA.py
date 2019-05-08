@@ -103,7 +103,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
         for inputs, outputs in zip(input_seq,target_seq):
             #Only use the activated rows of the weight matrix
             #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-            activated = torch.Tensor([outputs] + [ind for ind in set(sample(stats, NS)) if ind != outputs]).cuda()
+            activated = torch.tensor([outputs] + [ind for ind in set(sample(stats, NS)) if ind != outputs]).cuda()
 
             for subword in ngram(inputs):
                 i+=1
