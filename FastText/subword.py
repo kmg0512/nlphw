@@ -36,7 +36,7 @@ def ngram(word):
     subwords = []
     for i in range(3, 7):
         l = len(word)
-        for j in range(-1, l - i + 1):
+        for j in range(-1, l - i + 2):
             if j == -1:
                 subwords.append('<' + word[:i - 1])
             elif j == l - i + 1:
@@ -100,19 +100,19 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
         start_time = time.time()
 
         #Training word2vec using SGD(Batch size : 1)
-        for inputs, outputs in zip(input_seq,target_seq):
+        for inputs, outputs in zip(input_seq, target_seq):
             #Only use the activated rows of the weight matrix
             #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
             activated = [outputs] + [ind for ind in set(sample(stats, NS)) if ind != outputs]
 
-            for subword in ngram(inputs):
+            for subword in set(ngram(inputs)):
                 i+=1
                 L, G_in, G_out = subword_embedding(s2i[subword], W_in, W_out[activated])
                 W_in[s2i[subword]] -= learning_rate*G_in.squeeze()
                 W_out[activated] -= learning_rate*G_out
                 losses.append(L.item())
 
-                if i%2000==0:
+                if i%5000==0:
                     avg_loss=sum(losses)/len(losses)
                     elapsed_time = time.time() - start_time
                     print("Loss : %f, Time : %f sec" %(avg_loss, elapsed_time,))
@@ -122,7 +122,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
 
     print()
     print("Total Time : ", sum(times), " sec")
-    print("Average Time : ", sum(times) / len(times), " sec")
+    #print("Average Time : ", sum(times) / len(times), " sec")
     print()
 
     return W_in, W_out
@@ -130,16 +130,18 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
 
 def sim(testwords, subword2ind, ind2word, matrix):
     wordsVector = torch.zeros(len(ind2word), matrix.size()[1])
-
+    
     for ind, word in ind2word.items():
+        if word == ' ': continue
         for subword in ngram(word):
             wordsVector[ind] += matrix[subword2ind[subword]]
 
     for testword in testwords:
         testVector = torch.zeros(1, matrix.size()[1])
         for subword in ngram(testword):
-            testVector += matrix[subword2ind[subword]]
-        distances = [(cosine(testVector, wordsVector[ind]), ind) for ind in len(ind2word)]
+            if subword2ind.get(subword) == None: continue
+            testVector += matrix[subword2ind.get(subword)]
+        distances = [(cosine(testVector, wordsVector[ind]), ind) for ind in range(1, len(ind2word))]
         closests = sorted(distances, key=lambda t: t[0], reverse=True)[:5]
 
         print()
@@ -183,9 +185,7 @@ def main():
     vocab = set(words)
 
     subwords = []
-    cnt = 0
     for word in vocab:
-        cnt += 1
         subwords += ngram(word)
     subvocab = set(subwords)
 
@@ -242,7 +242,6 @@ def main():
     emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), len(s2i), s2i, freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.05)
 
     testwords = ["narrow-mindedness", "department", "campfires", "knowing", "urbanize", "imperfection", "principality", "abnormal", "secondary", "ungraceful"]
-    for tw in testwords:
-    	sim(tw,s2i,i2w,emb)
+    sim(testwords,s2i,i2w,emb)
 
 main()
