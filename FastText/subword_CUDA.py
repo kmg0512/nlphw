@@ -66,7 +66,7 @@ def subword_embedding(centerWord, inputMatrix, outputMatrix):
 
     inputVector = inputMatrix[centerWord]
 
-    grad_out = torch.zeros(K, D).cuda()
+    grad_out = outputMatrix.clone()
 
     p = sigmoid(torch.mm(outputMatrix[0].reshape(1, D), inputVector.reshape(D, 1)))
     loss = -torch.log(p)
@@ -103,7 +103,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
         for inputs, outputs in zip(input_seq,target_seq):
             #Only use the activated rows of the weight matrix
             #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-            activated = [outputs] + [ind for ind in set(sample(stats, NS)) if ind != outputs]
+            activated = torch.Tensor([outputs] + [ind for ind in set(sample(stats, NS)) if ind != outputs]).cuda()
 
             for subword in ngram(inputs):
                 i+=1
