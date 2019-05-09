@@ -112,7 +112,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
                 W_out[activated] -= learning_rate*G_out
                 losses.append(L.item())
 
-                if i%5000==0:
+                if i%50000==0:
                     avg_loss=sum(losses)/len(losses)
                     elapsed_time = time.time() - start_time
                     print("Loss : %f, Time : %f sec" %(avg_loss, elapsed_time,))
@@ -122,7 +122,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
 
     print()
     print("Total Time : ", sum(times), " sec")
-    #print("Average Time : ", sum(times) / len(times), " sec")
+    print("Average Time : ", sum(times) / len(times), " sec")
     print()
 
     return W_in, W_out
@@ -174,7 +174,7 @@ def main():
         exit()
 
     print("preprocessing...")
-    corpus = subsampling(text.split()) #if part == "full" else text.split()
+    corpus = subsampling(text.split())
     stats = Counter(corpus)
     words = []
 
@@ -239,7 +239,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), len(s2i), s2i, freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.05)
+    emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), len(s2i), s2i, freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
 
     testwords = ["narrow-mindedness", "department", "campfires", "knowing", "urbanize", "imperfection", "principality", "abnormal", "secondary", "ungraceful"]
     sim(testwords,s2i,i2w,emb)
