@@ -167,9 +167,7 @@ def main():
         t[0] = int(t[0]) - 1
         t[1] = re.sub("[\W_]", ' ', t[1]).split()
         t[2] = re.sub("[\W_]", ' ', t[2]).split()
-        print(t)
         corpus.append(t)
-    exit()
     stats = Counter(corpus)
     words = []
 
