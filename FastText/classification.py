@@ -83,7 +83,7 @@ def subword_embedding(centerWord, inputMatrix, outputMatrix):
     return loss, grad_in, grad_out
 
 
-def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i, stats, NS=20, dimension=100, learning_rate=0.025, epoch=3):
+def text_classification_trainer(input_seq, target_seq, numwords, numsubwords, s2i, stats, dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -104,7 +104,7 @@ def subword_embedding_trainer(input_seq, target_seq, numwords, numsubwords, s2i,
         for inputs, outputs in zip(input_seq, target_seq):
             #Only use the activated rows of the weight matrix
             #activated should be torch.tensor(K,) so that activated W_out has the form of torch.tensor(K, D)
-            activated = [outputs] + [ind for ind in set(sample(stats, NS)) if ind != outputs]
+            activated = None
 
             for subword in set(ngram(inputs)):
                 i+=1
@@ -226,9 +226,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = subword_embedding_trainer(input_set, target_set, len(w2i), len(s2i), s2i, freqtable, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
+    emb,_ = text_classification_trainer(input_set, target_set, len(w2i), len(s2i), s2i, freqtable, dimension=64, epoch=1, learning_rate=0.025)
 
-    testwords = ["narrow-mindedness", "department", "campfires", "knowing", "urbanize", "imperfection", "principality", "abnormal", "secondary", "ungraceful"]
-    sim(testwords,s2i,i2w,emb)
 
 main()
