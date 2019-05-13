@@ -4,6 +4,7 @@ from collections import Counter
 import argparse
 import time
 import math
+import csv
 
 
 def sigmoid(x):
@@ -156,10 +157,11 @@ def sim(testwords, subword2ind, ind2word, matrix):
 def main():
 	#Load and preprocess corpus
     print("loading...")
-    text = open('/ag_news_csv/train.csv').readlines()[0]
+    f = open('./ag_news_csv/train.csv', 'r')
+    text = list(csv.reader(f))
 
     print("preprocessing...")
-    corpus = subsampling(text.split())
+    corpus = list(map(lambda x: x.split('","'), text))
     stats = Counter(corpus)
     words = []
 
