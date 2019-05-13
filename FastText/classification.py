@@ -5,6 +5,7 @@ import argparse
 import time
 import math
 import csv
+import re
 
 
 def sigmoid(x):
@@ -161,7 +162,14 @@ def main():
     text = list(csv.reader(f))
 
     print("preprocessing...")
-    corpus = list(map(lambda x: x.split('","'), text))
+    corpus = []
+    for t in text:
+        t[0] = int(t[0]) - 1
+        t[1] = re.sub("[\W_]", ' ', t[1]).split()
+        t[2] = re.sub("[\W_]", ' ', t[2]).split()
+        print(t)
+        corpus.append(t)
+    exit()
     stats = Counter(corpus)
     words = []
 
