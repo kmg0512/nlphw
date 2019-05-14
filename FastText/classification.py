@@ -9,7 +9,8 @@ import re
 
 
 def softmax(o):
-    e = torch.exp(o)
+    m = torch.min(o)
+    e = torch.exp(o + m)
     softmax = e / torch.sum(e)
 
     return softmax
@@ -42,12 +43,12 @@ def text_classification(contextWords, label, inputMatrix, outputMatrix):
     e[label] -= 1
 
     grad_in = torch.mm(e.t(), outputMatrix)
-    grad_out = torch.mm(e, inputVector.t())
+    grad_out = torch.mm(e, inputVector.reshape(1, D))
 
     return loss, grad_in, grad_out
 
 
-def text_classification_trainer(input_seq, target_seq, numwords, numlabels, stats, dimension=100, learning_rate=0.025, epoch=3):
+def text_classification_trainer(input_seq, target_seq, numwords, numlabels,dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -73,7 +74,7 @@ def text_classification_trainer(input_seq, target_seq, numwords, numlabels, stat
             W_out -= learning_rate*G_out
 
             losses.append(L.item())
-            if i%50000==0:
+            if i%30000==0:
                 avg_loss=sum(losses)/len(losses)
                 elapsed_time = time.time() - start_time
                 print("Loss : %f, Time : %f sec" %(avg_loss, elapsed_time,))
@@ -89,33 +90,68 @@ def text_classification_trainer(input_seq, target_seq, numwords, numlabels, stat
     return W_in, W_out
 
 
-def classify(emb):
-    #Load and preprocess corpus
-    print("test loading...")
-    f = open('./ag_news_csv/test.csv', 'r')
-    rawcsv = list(csv.reader(f))
+def classify(inputMatrix, outputMatrix, w2i, classes):
+    V, D = inputMatrix.size()
+    K, _ = outputMatrix.size()
 
-    print("test preprocessing...")
-    articles = []
-    corpus = []
+    print("TEST")
+    rawcsv = None
+    with open('./ag_news_csv/test.csv', 'r') as f:
+        rawcsv = list(csv.reader(f))
+
+    f = open("result.txt", 'w')
+    f.write("Prediction\tAnswer")
+
+    cnt = 0
+    ans = 0
+    table = torch.zeros(K, K)
     for article in rawcsv:
         article[0] = int(article[0]) - 1
         article[1] = re.sub("[\W_]", ' ', article[1]).split()
         article[2] = re.sub("[\W_]", ' ', article[2]).split()
-        corpus += article[1] + article[2]
-        articles.append(article)
-    stats = Counter(corpus)
-    words = []
+        
+        
+        input_set = list(set([w2i.get(word) for word in article[1] + article[2] if w2i.get(word) != None]))
+
+        inputVector = inputMatrix[input_set].sum(0)
+        output = outputMatrix.mm(inputVector.reshape(D, 1))
+        y = softmax(output)
+
+        label = torch.argmax(y)
+
+        fstr = "%s\t%s\n" % (classes[label], classes[article[0]])
+        f.write(fstr)
+
+        if label == article[0]:
+            ans += 1
+        cnt += 1
+
+        table[label][article[0]] += 1
+    
+    for t in table:
+        f.write('\n' + str(t))
+
+    fstr = "\n\nResult: %d / %d (%0.2f%%)\n" % (ans, cnt, (ans / cnt * 100))
+    f.write(fstr)
+    f.close()
+
+    print(table)
+    print(fstr)
+
 
 
 def main():
 	#Load and preprocess corpus
-    print("train loading...")
-    f = open('./ag_news_csv/train.csv', 'r')
-    rawcsv = list(csv.reader(f))
-    classes = open('./ag_news_csv/classes.txt', 'r').readlines()
+    print("loading...")
+    rawcsv = None
+    with open('./ag_news_csv/train.csv', 'r') as f:
+        rawcsv = list(csv.reader(f))
+    
+    classes = None
+    with open('./ag_news_csv/classes.txt', 'r') as f:
+        classes = [word.strip() for word in f.readlines()]
 
-    print("train preprocessing...")
+    print("preprocessing...")
     articles = []
     corpus = []
     for article in rawcsv:
@@ -144,23 +180,12 @@ def main():
     for k,v in w2i.items():
         i2w[v]=k
 
-    #Frequency table for negative sampling
-    freqtable = [0,0,0]
-    for k,v in stats.items():
-        f = int(v**0.75)
-        for _ in range(f):
-            if k in w2i.keys():
-                freqtable.append(w2i[k])
-
     #Make training set
     print("build training set...")
     input_set = []
     target_set = []
-    window_size = 5
     for article in articles:
-        input_set.append(w2i[word] for word in article[1])
-        input_set.append(w2i[word] for word in article[2])
-        target_set.append(article[0])
+        input_set.append(list(set([w2i.get(word) for word in article[1] + article[2] if w2i.get(word) != None])))
         target_set.append(article[0])
 
     print("Vocabulary size")
@@ -168,7 +193,7 @@ def main():
     print()
 
     #Training section
-    emb,_ = text_classification_trainer(input_set, target_set, len(w2i), len(classes), freqtable, dimension=64, epoch=1, learning_rate=0.05)
-    classify(emb)
+    im, om = text_classification_trainer(input_set, target_set, len(w2i), len(classes), dimension=64, epoch=1, learning_rate=0.05)
+    classify(im, om, w2i, classes)
 
 main()
