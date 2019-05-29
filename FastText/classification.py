@@ -9,8 +9,8 @@ import re
 
 
 def softmax(o):
-    m = torch.min(o)
-    e = torch.exp(o + m)
+    m = torch.max(o)
+    e = torch.exp(o - m)
     softmax = e / torch.sum(e)
 
     return softmax
@@ -48,7 +48,7 @@ def text_classification(contextWords, label, inputMatrix, outputMatrix):
     return loss, grad_in, grad_out
 
 
-def text_classification_trainer(input_seq, target_seq, numwords, numlabels,dimension=100, learning_rate=0.025, epoch=3):
+def text_classification_trainer(input_seq, target_seq, numwords, numlabels, dimension=100, learning_rate=0.025, epoch=3):
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
@@ -100,7 +100,7 @@ def classify(inputMatrix, outputMatrix, w2i, classes):
         rawcsv = list(csv.reader(f))
 
     f = open("result.txt", 'w')
-    f.write("Prediction\tAnswer")
+    f.write("Prediction\tAnswer\n")
 
     cnt = 0
     ans = 0
@@ -109,8 +109,8 @@ def classify(inputMatrix, outputMatrix, w2i, classes):
         article[0] = int(article[0]) - 1
         article[1] = re.sub("[\W_]", ' ', article[1]).split()
         article[2] = re.sub("[\W_]", ' ', article[2]).split()
-        
-        
+
+
         input_set = list(set([w2i.get(word) for word in article[1] + article[2] if w2i.get(word) != None]))
 
         inputVector = inputMatrix[input_set].sum(0)
@@ -127,14 +127,16 @@ def classify(inputMatrix, outputMatrix, w2i, classes):
         cnt += 1
 
         table[label][article[0]] += 1
-    
-    for t in table:
-        f.write('\n' + str(t))
 
-    fstr = "\n\nResult: %d / %d (%0.2f%%)\n" % (ans, cnt, (ans / cnt * 100))
+    f.write("\nRow: Prediction, Column: Answer\n")
+    for t in table:
+        f.write(str(t) + '\n')
+
+    fstr = "\nResult: %d / %d (%0.2f%%)\n" % (ans, cnt, (ans / cnt * 100))
     f.write(fstr)
     f.close()
 
+    print("\nRow: Prediction, Column: Answer\n")
     print(table)
     print(fstr)
 
@@ -146,7 +148,7 @@ def main():
     rawcsv = None
     with open('./ag_news_csv/train.csv', 'r') as f:
         rawcsv = list(csv.reader(f))
-    
+
     classes = None
     with open('./ag_news_csv/classes.txt', 'r') as f:
         classes = [word.strip() for word in f.readlines()]
