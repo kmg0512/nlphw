@@ -2,13 +2,13 @@
 
 
 ### For Sentence Classification
-- Nonlinearity: ReLU 
-- Window filter sizes h = 3, 4, 5 
-- Each filter size has 100 feature maps 
-- Dropout p = 0.5 
-- L2 constraint s for rows of softmax, s = 3 
-- Mini batch size for SGD training: 50 
-- Word vectors: pre-trained with word2vec, k = 300 
+- Nonlinearity: ReLU
+- Window filter sizes h = 3, 4, 5
+- Each filter size has 100 feature maps
+- Dropout p = 0.5
+- L2 constraint s for rows of softmax, s = 3
+- Mini batch size for SGD training: 50
+- Word vectors: pre-trained with word2vec, k = 300
 - During training, keep checking performance on dev set and pick highest accuracy weights for final evaluation
 
 
@@ -28,7 +28,7 @@
 ```python
 CLASS torch.nn.Embedding(num_embeddings, embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None)
 ```
-A simple lookup table that stores embeddings of a fixed dictionary and size.  
+A simple lookup table that stores embeddings of a fixed dictionary and size.
 This module is often used to store word embeddings and retrieve them using indices. The input to the module is a list of indices, and the output is the corresponding word embeddings.
 
 Parameters
@@ -48,13 +48,13 @@ embedding = nn.Embedding(10, 3)
 input = torch.LongTensor([[1,2,4,5],[4,3,2,9]])
 embedding(input)
 ```
-tensor([[[-0.0251, -1.6902,  0.7172],  
-         [-0.6431,  0.0748,  0.6969],  
-         [ 1.4970,  1.3448, -0.9685],  
-         [-0.3677, -2.7265, -0.1685]],  
-        [[ 1.4970,  1.3448, -0.9685],  
-         [ 0.4362, -0.4004,  0.9400],  
-         [-0.6431,  0.0748,  0.6969],  
+tensor([[[-0.0251, -1.6902,  0.7172],
+         [-0.6431,  0.0748,  0.6969],
+         [ 1.4970,  1.3448, -0.9685],
+         [-0.3677, -2.7265, -0.1685]],
+        [[ 1.4970,  1.3448, -0.9685],
+         [ 0.4362, -0.4004,  0.9400],
+         [-0.6431,  0.0748,  0.6969],
          [ 0.9124, -2.3616,  1.1151]]])
 #### Convolutional Layer
 ```python
@@ -74,7 +74,7 @@ Parameters
 ```python
 CLASS torch.nn.AdaptiveMaxPool1d(output_size, return_indices=False)
 ```
-Applies a 1D adaptive max pooling over an input signal composed of several input planes.  
+Applies a 1D adaptive max pooling over an input signal composed of several input planes.
 The output size is H, for any input size. The number of output features is equal to the number of input planes.
 
 Parameters
@@ -84,11 +84,11 @@ Parameters
 ```python
 CLASS torch.nn.Linear(in_features, out_features, bias=True)
 ```
-Applies a linear transformation to the incoming data: y=xA^T+b  
+Applies a linear transformation to the incoming data: y=xA^T+b
 Parameters
 - in_features - size of each input sample
 - out_features - size of each output sample
-- bias - If set to False, the layer will not learn an additive bias  
+- bias - If set to False, the layer will not learn an additive bias
 Example
 ```python
 m = nn.Linear(20, 30)
@@ -119,8 +119,8 @@ https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/01-basics/feedf
 |----------------------|------------------|----------|
 | Random Initialized   | CNN-rand         | 76.1     |
 | Word2vec fixed       | CNN-static       | 81.0     |
-| Word2vec fine-tuned  | CNN-non-static   | **81.5** |
-| Fixed and fine-tuned | CNN-multichannel | 81.1     |  
+| Word2vec fine-tuned  | CNN-non-static   | __81.5__ |
+| Fixed and fine-tuned | CNN-multichannel | 81.1     |
 Set requires_grad to false you want to freeze:
 ```python
 # we want to freeze the fc2 Layer

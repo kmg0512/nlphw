@@ -1,3 +1,4 @@
 .vscode/
 .DS_Store
 */__pycache__/
+*/GoogleNews-vectors-negative300.bin
