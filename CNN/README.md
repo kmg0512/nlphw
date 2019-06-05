@@ -70,6 +70,13 @@ Parameters
 - dilation(int or tuple,optional) - Spacing between kernel elements
 - groups(int,optional) - Number of blocked connections from input channels to output channels
 - bias(bool,optional) - If True, adds a learnable bias to the output
+
+Example
+```python
+m = nn.Conv1d(16, 33, 3, stride=2)
+input = torch.randn(20, 16, 50)
+output = m(input)
+```
 #### Pooling Layer
 ```python
 CLASS torch.nn.AdaptiveMaxPool1d(output_size, return_indices=False)
@@ -80,6 +87,14 @@ The output size is H, for any input size. The number of output features is equal
 Parameters
 - output_size - the target output size H
 - return_indices - if True, will return  the indices along with the outputs. Useful to pass to nn.MaxUnpool1d.
+
+Example
+```python
+# target output size of 5
+m = nn.AdaptiveMaxPool1d(5)
+input = torch.randn(1, 64, 8)
+output = m(input)
+```
 #### FC Layer
 ```python
 CLASS torch.nn.Linear(in_features, out_features, bias=True)
@@ -89,6 +104,7 @@ Parameters
 - in_features - size of each input sample
 - out_features - size of each output sample
 - bias - If set to False, the layer will not learn an additive bias
+
 Example
 ```python
 m = nn.Linear(20, 30)
