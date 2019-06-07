@@ -54,12 +54,8 @@ def load_bin_vec(fname, vocab):
     word_vecs = {}
     with open(fname, "rb") as f:
         header = f.readline()
-        print(header)
-        vocab_size, layer1_size = map(int, header.split())
-        print(vocab_size)
-        print(layer1_size)
-        binary_len = torch.zeros(1).element_size() * layer1_size
-        print(binary_len)
+        vocab_size, layer1_size = map(int, header.split())  # 3000000, 300
+        binary_len = 4 * layer1_size
         for line in range(vocab_size):
             word = []
             while True:
@@ -70,7 +66,7 @@ def load_bin_vec(fname, vocab):
                 if ch != '\n':
                     word.append(ch)
             if word in vocab:
-               word_vecs[word] = torch.from_numpy(np.frombuffer(f.read(binary_len), dtype='float32'))
+                word_vecs[word] = torch.from_numpy(np.frombuffer(f.read(binary_len), dtype='float32'))
             else:
                 f.read(binary_len)
     return word_vecs
@@ -115,21 +111,24 @@ def get_idx_from_sent(sent, word_idx_map, max_l=51, k=300, filter_h=5):
         x.append(0)
     return x
 
-def make_idx_data_cv(revs, word_idx_map, cv, max_l=51, k=300, filter_h=5):
+def make_idx_data(revs, word_idx_map, max_l=51, k=300, filter_h=5):
     """
     Transforms sentences into a 2-d matrix.
     """
     train, test = [], []
+    random.shuffle(revs)
+    i = 0
     for rev in revs:
         sent = get_idx_from_sent(rev["text"], word_idx_map, max_l, k, filter_h)
         sent.append(rev["y"])
-        if rev["split"]==cv:
+        if i < len(revs) / 10:
             test.append(sent)
+            i += 1
         else:
             train.append(sent)
     train = torch.tensor(train, dtype=torch.int32)
     test = torch.tensor(test, dtype=torch.int32)
-    return [train, test]
+    return train, test
 
 def train_conv_net(datasets,
                    U,
@@ -156,10 +155,6 @@ def main():
     print("number of sentences: " + str(len(revs)))             # 10662
     print("vocab size: " + str(len(vocab)))                     # 18764
     print("max sentence length: " + str(max_l))                 # 56
-    with open("revs","w") as f:
-        f.write(str(revs))
-    with open("vocab","w") as f:
-        f.write(str(vocab))
 
     # read pre-trained word2vec
     print("loading word2vec vectors...", end=' ')
@@ -168,7 +163,7 @@ def main():
 
     print("num words already in word2vec: " + str(len(w2v)))    # 16448
 
-    W = {}                                                      # torch.Size([19135, 300])
+    W = {}                                                      # torch.Size([18765, 300])
     add_unknown_words(w2v, vocab)
     W["w2v"], word_idx_map = get_W(w2v)
     rand_vecs = {}
@@ -177,27 +172,24 @@ def main():
     print("dataset created!")
 
     non_static = [True, False, True]
-    U = [W["rand"], W["w2v"], W["w2v"]]
+    U = [W["rand"], W["w2v"], W["w2v"]] 
     results = [[],[],[]]
-    for i in range(10):
-        datasets = make_idx_data_cv(revs, word_idx_map, i, max_l=56,k=300, filter_h=5)
-        with open("datasets", "a") as f:
-            f.write(str(datasets))
-        '''
-        for j in range(3):
-            perf = train_conv_net(datasets,
-                                U[j],
-                                lr_decay=0.95,
-                                filter_hs=[3,4,5],
-                                hidden_units=[100,2],
-                                shuffle_batch=True,
-                                n_epochs=1, # 25
-                                sqr_norm_lim=9,
-                                non_static=non_static[j],
-                                batch_size=50,
-                                dropout_rate=0.5)
-            results[j].append(perf)
-        '''
+    train, test = make_idx_data(revs, word_idx_map, max_l=max_l, k=300, filter_h=5)    # 9595 1067 X 65
+    '''
+    for j in range(3):
+        perf = train_conv_net(datasets,
+                            U[j],
+                            lr_decay=0.95,
+                            filter_hs=[3,4,5],
+                            hidden_units=[100,2],
+                            shuffle_batch=True,
+                            n_epochs=1, # 25
+                            sqr_norm_lim=9,
+                            non_static=non_static[j],
+                            batch_size=50,
+                            dropout_rate=0.5)
+        results[j].append(perf)
+    '''
     with open("results", "w") as f:
         f.write(str(results))
 
