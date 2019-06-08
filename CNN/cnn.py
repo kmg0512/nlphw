@@ -6,6 +6,7 @@ from collections import defaultdict
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 
 def clean_str(string):
@@ -69,31 +70,7 @@ def load_bin_vec(fname, vocab):
                 word_vecs[word] = torch.from_numpy(np.frombuffer(f.read(binary_len), dtype='float32'))
             else:
                 f.read(binary_len)
-    return word_vecs
-
-def add_unknown_words(word_vecs, vocab, min_df=1, k=300):
-    """
-    For words that occur in at least min_df documents, create a separate word vector.
-    0.25 is chosen so the unknown vectors have (approximately) same variance as pre-trained ones
-    """
-    for word in vocab:
-        if word not in word_vecs and vocab[word] >= min_df:
-            word_vecs[word] = torch.rand(k) / 2.0 - 0.25
-
-def get_W(word_vecs, k=300):
-    """
-    Get word matrix. W[i] is the vector for word indexed by i
-    """
-    vocab_size = len(word_vecs)
-    word_idx_map = dict()
-    W = torch.zeros([vocab_size+1, k], dtype=torch.float32)
-    W[0] = torch.zeros(k, dtype=torch.float32)
-    i = 1
-    for word in word_vecs:
-        W[i] = word_vecs[word]
-        word_idx_map[word] = i
-        i += 1
-    return W, word_idx_map
+    return word_vecs, layer1_size
 
 def get_idx_from_sent(sent, word_idx_map, max_l=51, k=300, filter_h=5):
     """
@@ -115,36 +92,38 @@ def make_idx_data(revs, word_idx_map, max_l=51, k=300, filter_h=5):
     """
     Transforms sentences into a 2-d matrix.
     """
-    train, test = [], []
+    train_x, train_y, test_x, test_y = [], [], [], []
     random.shuffle(revs)
     i = 0
     for rev in revs:
+        y = [0, 0]
         sent = get_idx_from_sent(rev["text"], word_idx_map, max_l, k, filter_h)
-        sent.append(rev["y"])
+        y[rev["y"]] += 1
         if i < len(revs) / 10:
-            test.append(sent)
+            test_x.append(sent)
+            test_y.append(y)
             i += 1
         else:
-            train.append(sent)
-    train = torch.tensor(train, dtype=torch.int32)
-    test = torch.tensor(test, dtype=torch.int32)
-    return train, test
+            train_x.append(sent)
+            train_y.append(y)
+    train_x = torch.tensor(train_x, dtype=torch.int32)
+    train_y = torch.tensor(train_y, dtype=torch.int32)
+    test_x = torch.tensor(test_x, dtype=torch.int32)
+    test_y = torch.tensor(test_y, dtype=torch.int32)
+    return train_x, train_y, test_x, test_y
 
-def train_conv_net(datasets,
-                   U,
-                   img_w=300,
-                   filter_hs=[3,4,5],
-                   hidden_units=[100,2],
-                   dropout_rate=0.5,
-                   shuffle_batch=True,
-                   n_epochs=25,
-                   batch_size=50,
-                   lr_decay = 0.95,
-                   sqr_norm_lim=9,
-                   non_static=True):
-    # Embedding layer
-    embedding = None
-    return None
+def train_conv_net( train_x,
+                    train_y,
+                    W,
+                    non_static,
+                    vocab_size,
+                    h=[3,4,5],
+                    feature=100,
+                    p=0.5,
+                    s=3,
+                    batch=50,
+                    k=300):
+    return 0
 
 def main():
     # read MR dataset
@@ -158,38 +137,41 @@ def main():
 
     # read pre-trained word2vec
     print("loading word2vec vectors...", end=' ')
-    w2v = load_bin_vec("GoogleNews-vectors-negative300.bin", vocab)
+    w2v, k = load_bin_vec("GoogleNews-vectors-negative300.bin", vocab)
     print("word2vec loaded!")
 
     print("num words already in word2vec: " + str(len(w2v)))    # 16448
 
+    # Embedding layer
+    embedding = nn.Embedding(len(vocab)+1, k, padding_idx=0)
     W = {}                                                      # torch.Size([18765, 300])
-    add_unknown_words(w2v, vocab)
-    W["w2v"], word_idx_map = get_W(w2v)
-    rand_vecs = {}
-    add_unknown_words(rand_vecs, vocab)
-    W["rand"], _ = get_W(rand_vecs)
+    word_idx_map = {}
+    W["rand"] = embedding(torch.LongTensor(range(len(vocab))))
+    W["w2v"] = embedding(torch.LongTensor(range(len(vocab))))
+    i = 1
+    for word in w2v:
+        W["w2v"][i] = word
+        word_idx_map[word] = i
+        i += 1
     print("dataset created!")
 
     non_static = [True, False, True]
-    U = [W["rand"], W["w2v"], W["w2v"]] 
-    results = [[],[],[]]
-    train, test = make_idx_data(revs, word_idx_map, max_l=max_l, k=300, filter_h=5)    # 9595 1067 X 65
-    '''
+    U = ["rand", "w2v", "w2v"]
+    results = []
+    train_x, train_y, test_x, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300, filter_h=5)    # 9595 1067 X 65
     for j in range(3):
-        perf = train_conv_net(datasets,
-                            U[j],
-                            lr_decay=0.95,
-                            filter_hs=[3,4,5],
-                            hidden_units=[100,2],
-                            shuffle_batch=True,
-                            n_epochs=1, # 25
-                            sqr_norm_lim=9,
-                            non_static=non_static[j],
-                            batch_size=50,
-                            dropout_rate=0.5)
-        results[j].append(perf)
-    '''
+        perf = train_conv_net(  train_x,
+                                train_y,
+                                W[U[j]],
+                                non_static[j],
+                                len(vocab),
+                                h=[3,4,5],
+                                feature=100,
+                                p=0.5,
+                                s=3,
+                                batch=50,
+                                k=300)
+        results.append(perf)
     with open("results", "w") as f:
         f.write(str(results))
 
