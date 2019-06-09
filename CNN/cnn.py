@@ -106,24 +106,16 @@ def make_idx_data(revs, word_idx_map, max_l=51, k=300, filter_h=5):
         else:
             train_x.append(sent)
             train_y.append(y)
-    train_x = torch.tensor(train_x, dtype=torch.int32)
-    train_y = torch.tensor(train_y, dtype=torch.int32)
-    test_x = torch.tensor(test_x, dtype=torch.int32)
-    test_y = torch.tensor(test_y, dtype=torch.int32)
+    train_x = torch.tensor(train_x)
+    train_y = torch.tensor(train_y)
+    test_x = torch.tensor(test_x)
+    test_y = torch.tensor(test_y)
     return train_x, train_y, test_x, test_y
 
-def train_conv_net( train_x,
-                    train_y,
-                    W,
-                    non_static,
-                    vocab_size,
-                    h=[3,4,5],
-                    feature=100,
-                    p=0.5,
-                    s=3,
-                    batch=50,
-                    k=300):
-    pass
+def train_conv_net(train_x, train_y, W, non_static, h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300):
+    x = W[i] for i in train_x
+    #x = torch.tensor(W[i] for i in train_x)
+    print(x.size())
     # cnn = nn.Conv1d()
     return 0
 
@@ -160,17 +152,7 @@ def main():
     train_x, train_y, test_x, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300, filter_h=5)    # 9595 1067 X 65
     print(train_x.size(), train_y.size())
     for j in range(3):
-        perf = train_conv_net(  train_x,
-                                train_y,
-                                W[U[j]],
-                                non_static[j],
-                                len(vocab),
-                                h=[3,4,5],
-                                feature=100,
-                                p=0.5,
-                                s=3,
-                                batch=50,
-                                k=300)
+        perf = train_conv_net(train_x, train_y, W[U[j]], non_static[j], h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300)
         results.append(perf)
     with open("results", "w") as f:
         f.write(str(results))
