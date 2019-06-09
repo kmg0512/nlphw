@@ -123,6 +123,8 @@ def train_conv_net( train_x,
                     s=3,
                     batch=50,
                     k=300):
+    pass
+    # cnn = nn.Conv1d()
     return 0
 
 def main():
@@ -146,19 +148,17 @@ def main():
     embedding = nn.Embedding(len(vocab)+1, k, padding_idx=0)
     W = {}                                                      # torch.Size([18765, 300])
     word_idx_map = {}
-    W["rand"] = embedding(torch.LongTensor(range(len(vocab))))
-    W["w2v"] = embedding(torch.LongTensor(range(len(vocab))))
-    i = 1
-    for word in w2v:
-        W["w2v"][i] = word
+    W["rand"] = W["w2v"] = embedding(torch.LongTensor(range(len(vocab))))
+    for word, i in zip(w2v, range(1,len(w2v)+1)):
+        W["w2v"][i] = w2v[word]
         word_idx_map[word] = i
-        i += 1
     print("dataset created!")
 
     non_static = [True, False, True]
     U = ["rand", "w2v", "w2v"]
     results = []
     train_x, train_y, test_x, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300, filter_h=5)    # 9595 1067 X 65
+    print(train_x.size(), train_y.size())
     for j in range(3):
         perf = train_conv_net(  train_x,
                                 train_y,
