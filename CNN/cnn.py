@@ -3,10 +3,15 @@ import re
 import sys
 import time
 from collections import defaultdict
+from functools import reduce
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
+from torch.utils.data import DataLoader, TensorDataset
 
 
 def clean_str(string):
@@ -40,11 +45,10 @@ def build_data():
                 words = set(orig_rev.split())
                 for word in words:
                     vocab[word] += 1
-                datum  = {"y":i,
-                        "text": orig_rev,
-                        "num_words": len(orig_rev.split())}
-                if datum["num_words"] > max_l:
-                    max_l = datum["num_words"]
+                datum  = {  "y":i,
+                            "text": orig_rev}
+                if len(orig_rev.split()) > max_l:
+                    max_l = len(orig_rev.split())
                 revs.append(datum)
     return revs, vocab, max_l
 
@@ -72,52 +76,48 @@ def load_bin_vec(fname, vocab):
                 f.read(binary_len)
     return word_vecs, layer1_size
 
-def get_idx_from_sent(sent, word_idx_map, max_l=51, k=300, filter_h=5):
+def get_idx_from_sent(sent, word_idx_map, max_l=51, k=300):
     """
     Transforms sentence into a list of indices. Pad with zeroes.
     """
     x = []
-    pad = filter_h - 1
-    for i in range(pad):
-        x.append(0)
     words = sent.split()
     for word in words:
         if word in word_idx_map:
             x.append(word_idx_map[word])
-    while len(x) < max_l+2*pad:
+    while len(x) < max_l:
         x.append(0)
     return x
 
-def make_idx_data(revs, word_idx_map, max_l=51, k=300, filter_h=5):
+def make_idx_data(revs, word_idx_map, max_l=56, k=300):
     """
     Transforms sentences into a 2-d matrix.
     """
-    train_x, train_y, test_x, test_y = [], [], [], []
+    train_x_idx, train_y, test_x_idx, test_y = [], [], [], []
     random.shuffle(revs)
-    i = 0
-    for rev in revs:
-        y = [0, 0]
-        sent = get_idx_from_sent(rev["text"], word_idx_map, max_l, k, filter_h)
-        y[rev["y"]] += 1
+    for rev, i in zip(revs, range(len(revs))):
+        sent = get_idx_from_sent(rev["text"], word_idx_map, max_l, k)
         if i < len(revs) / 10:
-            test_x.append(sent)
-            test_y.append(y)
-            i += 1
+            test_x_idx.append(sent)
+            test_y.append(rev["y"])
         else:
-            train_x.append(sent)
-            train_y.append(y)
-    train_x = torch.tensor(train_x)
-    train_y = torch.tensor(train_y)
-    test_x = torch.tensor(test_x)
-    test_y = torch.tensor(test_y)
-    return train_x, train_y, test_x, test_y
+            train_x_idx.append(sent)
+            train_y.append(rev["y"])
+    train_y = torch.Tensor(train_y)
+    test_y = torch.Tensor(test_y)
+    return train_x_idx, train_y, test_x_idx, test_y
 
-def train_conv_net(train_x, train_y, W, non_static, h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300):
-    x = W[i] for i in train_x
-    #x = torch.tensor(W[i] for i in train_x)
-    print(x.size())
-    # cnn = nn.Conv1d()
-    return 0
+def make_data(x_idx, W, max_l=56, k=300):
+    x = [reduce(lambda x,y:x+y, [W[idx] for idx in [sent for sent in x_idx]])]
+    print(x)
+    return None
+
+# def train_conv_net(train_x, train_y, W, non_static, h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300):
+#     x = W[i] for i in train_x
+#     #x = torch.tensor(W[i] for i in train_x)
+#     print(x.size())
+#     # cnn = nn.Conv1d()
+#     return 0
 
 def main():
     # read MR dataset
@@ -131,30 +131,32 @@ def main():
 
     # read pre-trained word2vec
     print("loading word2vec vectors...", end=' ')
-    w2v, k = load_bin_vec("GoogleNews-vectors-negative300.bin", vocab)
+    word_vecs, k = load_bin_vec("GoogleNews-vectors-negative300.bin", vocab)
     print("word2vec loaded!")
 
-    print("num words already in word2vec: " + str(len(w2v)))    # 16448
+    print("num words already in word2vec: " + str(len(word_vecs)))    # 16448
 
     # Embedding layer
     embedding = nn.Embedding(len(vocab)+1, k, padding_idx=0)
     W = {}                                                      # torch.Size([18765, 300])
     word_idx_map = {}
-    W["rand"] = W["w2v"] = embedding(torch.LongTensor(range(len(vocab))))
-    for word, i in zip(w2v, range(1,len(w2v)+1)):
-        W["w2v"][i] = w2v[word]
+    W["rand"] = W["vec"] = embedding(torch.LongTensor(range(len(vocab)+1)))
+    for word, i in zip(vocab, range(1,len(vocab)+1)):
+        if word in word_vecs:
+            W["vec"][i] = word_vecs[word]
         word_idx_map[word] = i
     print("dataset created!")
 
     non_static = [True, False, True]
-    U = ["rand", "w2v", "w2v"]
+    U = ["rand", "vec", "vec"]
     results = []
-    train_x, train_y, test_x, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300, filter_h=5)    # 9595 1067 X 65
-    print(train_x.size(), train_y.size())
-    for j in range(3):
-        perf = train_conv_net(train_x, train_y, W[U[j]], non_static[j], h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300)
-        results.append(perf)
-    with open("results", "w") as f:
-        f.write(str(results))
+    train_x_idx, train_y, test_x_idx, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300)    # 9595 1067 X 65
+    for i in range(3):
+        train_x = make_data(train_x_idx, W[U[i]], max_l=max_l, k=300)
+        break
+    #     perf = train_conv_net(train_x, train_y, W[U[i]], non_static[i], h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300)
+    #     results.append(perf)
+    # with open("results", "w") as f:
+    #     f.write(str(results))
 
 main()
