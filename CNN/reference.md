@@ -10,6 +10,7 @@
 - https://ratsgo.github.io/natural%20language%20processing/2017/03/19/CNN/
 - https://arclab.tistory.com/149
 - https://github.com/taewanme/DL_With_PyTorch/blob/master/Chapter06/IMDB_with_1d_Convolutions_completed.ipynb
+- https://kh-kim.gitbook.io/natural-language-processing-with-pytorch/00-cover-7/05-cnn
 
 ### CNN
 - https://wingnim.tistory.com/36
