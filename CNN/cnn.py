@@ -4,6 +4,7 @@ import sys
 import time
 from collections import defaultdict
 from functools import reduce
+from time import sleep
 
 import numpy as np
 import torch
@@ -12,6 +13,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tnrange, tqdm, tqdm_notebook
 
 
 def clean_str(string):
@@ -61,7 +63,7 @@ def load_bin_vec(fname, vocab):
         header = f.readline()
         vocab_size, layer1_size = map(int, header.split())  # 3000000, 300
         binary_len = 4 * layer1_size
-        for line in range(vocab_size):
+        for line in tqdm(range(vocab_size), desc='load_bin_vec'):
             word = []
             while True:
                 ch = f.read(1).decode("latin1")
@@ -76,7 +78,7 @@ def load_bin_vec(fname, vocab):
                 f.read(binary_len)
     return word_vecs, layer1_size
 
-def get_idx_from_sent(sent, word_idx_map, max_l=51, k=300):
+def get_idx_from_sent(sent, word_idx_map, max_l=56, k=300):
     """
     Transforms sentence into a list of indices. Pad with zeroes.
     """
@@ -103,21 +105,68 @@ def make_idx_data(revs, word_idx_map, max_l=56, k=300):
         else:
             train_x_idx.append(sent)
             train_y.append(rev["y"])
-    train_y = torch.Tensor(train_y)
-    test_y = torch.Tensor(test_y)
+    train_y = torch.LongTensor(train_y)
+    test_y = torch.LongTensor(test_y)
     return train_x_idx, train_y, test_x_idx, test_y
 
 def make_data(x_idx, W, max_l=56, k=300):
-    x = [reduce(lambda x,y:x+y, [W[idx] for idx in [sent for sent in x_idx]])]
-    print(x)
-    return None
+    x = torch.Tensor(len(x_idx), 1, max_l * k)
+    for i, sent in enumerate(x_idx):
+        xx = []
+        for idx in sent:
+            xx.append(W[idx])
+        x[i] = torch.cat(tuple(xx))
+    return x
 
-# def train_conv_net(train_x, train_y, W, non_static, h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300):
-#     x = W[i] for i in train_x
-#     #x = torch.tensor(W[i] for i in train_x)
-#     print(x.size())
-#     # cnn = nn.Conv1d()
-#     return 0
+class CNN(nn.Module):
+    def __init__(self, hs, feature, k, p):
+        super(CNN, self).__init__()
+        for h in hs:
+            conv = nn.Conv1d(1, feature, h * k, stride=k)
+            setattr(self, 'conv%d' % h, conv)
+        self.relu = nn.ReLU()
+        self.pool = nn.AdaptiveMaxPool1d(1)
+        self.drop = nn.Dropout(p)
+        self.fc = nn.Linear(len(hs) * feature, 2)
+        self.loss = nn.LogSoftmax(dim=-1)
+        self.hs = hs
+        
+    def forward(self, x):
+        outs = []
+        for h in self.hs:
+            conv = getattr(self, 'conv%d' % h)
+            out = self.drop(self.relu(conv(x)))
+            out = self.pool(out)
+            outs.append(out)
+        outs = torch.cat(outs, dim=1).reshape(-1, 300)
+        outs = self.fc(outs)
+        return self.loss(outs)
+
+def cnn_trainer(train_loader, test_x, test_y, W, non_static, h=[3,4,5], feature=100, p=0.5, s=3, k=300):
+    criterion = nn.CrossEntropyLoss()
+    model = CNN(h, feature, k, p)
+    optimizer = optim.SGD(model.parameters(), lr=0.01)
+
+    total_loss = 0
+    for epoch in tqdm(range(10), desc='epoch'):
+        total_loss = 0
+        for train_x, train_y in tqdm(train_loader, desc='train',):# leave=False):
+            train_x, train_y = Variable(train_x), Variable(train_y)
+            optimizer.zero_grad()
+            output = model(train_x)
+            loss = criterion(output, train_y)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.data
+        # if (epoch+1) % 1 == 0:
+        #     print(epoch+1, total_loss)
+    
+    print(total_loss)
+    test_x, test_y = Variable(test_x), Variable(test_y)
+    result = torch.max(model(test_x).data, 1)[1]
+    accuracy = sum(test_y.data.numpy() == result.numpy()) / len(test_y.data.numpy())
+
+    return accuracy
 
 def main():
     # read MR dataset
@@ -125,9 +174,9 @@ def main():
     revs, vocab, max_l = build_data()
     print("data loaded!")
 
-    print("number of sentences: " + str(len(revs)))             # 10662
-    print("vocab size: " + str(len(vocab)))                     # 18764
-    print("max sentence length: " + str(max_l))                 # 56
+    print("number of sentences: " + str(len(revs))) # 10662
+    print("vocab size: " + str(len(vocab)))         # 18764
+    print("max sentence length: " + str(max_l))     # 56
 
     # read pre-trained word2vec
     print("loading word2vec vectors...", end=' ')
@@ -138,9 +187,9 @@ def main():
 
     # Embedding layer
     embedding = nn.Embedding(len(vocab)+1, k, padding_idx=0)
-    W = {}                                                      # torch.Size([18765, 300])
+    W = {}
     word_idx_map = {}
-    W["rand"] = W["vec"] = embedding(torch.LongTensor(range(len(vocab)+1)))
+    W["rand"] = W["vec"] = embedding(torch.LongTensor(range(len(vocab)+1))) # torch.Size([18765, 300])
     for word, i in zip(vocab, range(1,len(vocab)+1)):
         if word in word_vecs:
             W["vec"][i] = word_vecs[word]
@@ -149,14 +198,15 @@ def main():
 
     non_static = [True, False, True]
     U = ["rand", "vec", "vec"]
-    results = []
-    train_x_idx, train_y, test_x_idx, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300)    # 9595 1067 X 65
-    for i in range(3):
-        train_x = make_data(train_x_idx, W[U[i]], max_l=max_l, k=300)
-        break
-    #     perf = train_conv_net(train_x, train_y, W[U[i]], non_static[i], h=[3,4,5], feature=100, p=0.5, s=3, batch=50, k=300)
-    #     results.append(perf)
-    # with open("results", "w") as f:
-    #     f.write(str(results))
+    accuracies = []
+    train_x_idx, train_y, test_x_idx, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300)    # 9595 1067 X 56
+    for i in tqdm(range(3), desc='i'):
+        train_x = make_data(train_x_idx, W[U[i]], max_l=max_l, k=300) # 9595, 1, 16800
+        test_x = make_data(test_x_idx, W[U[i]], max_l=max_l, k=300)
+        train = TensorDataset(train_x, train_y)
+        train_loader = DataLoader(train, batch_size=50)
+        accuracy = cnn_trainer(train_loader, test_x, test_y, W[U[i]], non_static[i], h=[3,4,5], feature=100, p=0.5, s=3, k=300)
+        accuracies.append(accuracy)
+    print(accuracies)
 
 main()
