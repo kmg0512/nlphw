@@ -3,8 +3,6 @@ import re
 import sys
 import time
 from collections import defaultdict
-from functools import reduce
-from time import sleep
 
 import numpy as np
 import torch
@@ -13,7 +11,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, TensorDataset
-from tqdm import tnrange, tqdm, tqdm_notebook
+from tqdm import tqdm
 
 
 def clean_str(string):
@@ -130,7 +128,7 @@ class CNN(nn.Module):
         self.fc = nn.Linear(len(hs) * feature, 2)
         self.loss = nn.LogSoftmax(dim=-1)
         self.hs = hs
-        
+
     def forward(self, x):
         outs = []
         for h in self.hs:
@@ -148,9 +146,9 @@ def cnn_trainer(train_loader, test_x, test_y, W, non_static, h=[3,4,5], feature=
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     total_loss = 0
-    for epoch in tqdm(range(10), desc='epoch'):
+    for epoch in tqdm(range(100), desc='epoch'):
         total_loss = 0
-        for train_x, train_y in tqdm(train_loader, desc='train',):# leave=False):
+        for train_x, train_y in tqdm(train_loader, desc='train', leave=False):
             train_x, train_y = Variable(train_x), Variable(train_y)
             optimizer.zero_grad()
             output = model(train_x)
@@ -158,9 +156,9 @@ def cnn_trainer(train_loader, test_x, test_y, W, non_static, h=[3,4,5], feature=
             loss.backward()
             optimizer.step()
             total_loss += loss.data
-        # if (epoch+1) % 1 == 0:
-        #     print(epoch+1, total_loss)
-    
+        if (epoch+1) % 10 == 0:
+            print(epoch+1, total_loss)
+
     print(total_loss)
     test_x, test_y = Variable(test_x), Variable(test_y)
     result = torch.max(model(test_x).data, 1)[1]
@@ -197,15 +195,15 @@ def main():
     print("dataset created!")
 
     non_static = [True, False, True]
-    U = ["rand", "vec", "vec"]
+    U = ["rand", "vec", "vec", "vec"]
     accuracies = []
-    train_x_idx, train_y, test_x_idx, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=300)    # 9595 1067 X 56
-    for i in tqdm(range(3), desc='i'):
-        train_x = make_data(train_x_idx, W[U[i]], max_l=max_l, k=300) # 9595, 1, 16800
-        test_x = make_data(test_x_idx, W[U[i]], max_l=max_l, k=300)
+    train_x_idx, train_y, test_x_idx, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=k)    # 9595 1067 X 56
+    for i in tqdm(range(4), desc='i'):
+        train_x = make_data(train_x_idx, W[U[i]], max_l=max_l, k=k) # 9595, 1, 16800
+        test_x = make_data(test_x_idx, W[U[i]], max_l=max_l, k=k)
         train = TensorDataset(train_x, train_y)
         train_loader = DataLoader(train, batch_size=50)
-        accuracy = cnn_trainer(train_loader, test_x, test_y, W[U[i]], non_static[i], h=[3,4,5], feature=100, p=0.5, s=3, k=300)
+        accuracy = cnn_trainer(train_loader, test_x, test_y, W[U[i]], non_static[i], h=[3,4,5], feature=100, p=0.5, s=3, k=k)
         accuracies.append(accuracy)
     print(accuracies)
 
