@@ -24,4 +24,7 @@
 - https://kh-kim.gitbook.io/natural-language-processing-with-pytorch/00-cover-7/05-cnn
 - https://wingnim.tistory.com/36
 
+### Honmono
+- https://github.com/galsang/CNN-sentence-classification-pytorch
+
 ![Alt Text](./cnn.png)
