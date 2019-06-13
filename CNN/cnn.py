@@ -116,22 +116,45 @@ def make_data(x_idx, W, max_l=56, k=300):
     return x
 
 class CNN(nn.Module):
-    def __init__(self, static, hs, feature, k, p):
+    def __init__(self, W, model_type, hs, feature, k, p):
         super(CNN, self).__init__()
-        self.ch = 2 if static == "multichannel" else 1
+        v = W.size()[0]
+
+        # Embedding Layer
+        self.ch = 1
+        self.emb = nn.Embedding(v, k, padding_idx=0)
+        if model_type != "rand":
+            self.emb.weight.data.copy_(W)
+            if model_type == "static":
+                self.emb.weight.requires_grad = False
+            elif model_type == "multichannel":
+                self.emb_multi = nn.Embedding(v, k, padding_idx=0)
+                self.emb_multi.weight.data.copy_(W)
+                self.emb_multi.weight.requires_grad = False
+                self.ch = 2
+
+        # Convolutional Layer
         for h in hs:
             conv = nn.Conv1d(self.ch, feature, h * k, stride=k)
             setattr(self, 'conv%d' % h, conv)
-        self.relu = nn.ReLU()
+
+        # Pooling Layer
         self.pool = nn.AdaptiveMaxPool1d(1)
-        self.dropout = nn.Dropout(p)
+
+        # FC Layer
         self.fc = nn.Linear(len(hs) * feature, 2)
-        self.activation = nn.Softmax(dim=-1)
-        self.static = static
+
+        # Other Layers
+        self.dropout = nn.Dropout(p)
+        self.relu = nn.ReLU()
+
         self.hs = hs
         self.feature = feature
 
     def forward(self, x):
+        x = self.emb(x)
+        print(x.size())
+
         outs = []
         for h in self.hs:
             conv = getattr(self, 'conv%d' % h)
@@ -142,9 +165,9 @@ class CNN(nn.Module):
         outs = self.fc(outs)
         return self.activation(outs)
 
-def cnn_trainer(train_loader, test_x, test_y, W, static, h=[3,4,5], feature=100, p=0.5, s=3, k=300):
+def cnn_trainer(train_loader, test, W, model_type, h=[3,4,5], feature=100, p=0.5, s=3, k=300):
     criterion = nn.NLLLoss()
-    model = CNN(static, h, feature, k, p)
+    model = CNN(W, model_type, h, feature, k, p)
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     total_loss = 0
@@ -158,10 +181,11 @@ def cnn_trainer(train_loader, test_x, test_y, W, static, h=[3,4,5], feature=100,
             loss.backward()
             optimizer.step()
             total_loss += loss.data
-        if (epoch+1) % 10 == 0:
+        if (epoch+1) % 5 == 0:
             print(epoch+1, total_loss)
 
     print(total_loss)
+    test_x, test_y = test.tensors
     test_x, test_y = Variable(test_x), Variable(test_y)
     result = torch.max(model(test_x).data, 1)[1]
     accuracy = sum(test_y.data.numpy() == result.numpy()) / len(test_y.data.numpy())
@@ -196,16 +220,14 @@ def main():
         word_idx_map[word] = i+1
     print("dataset created!")
 
-    U = ["rand", "vec", "vec", "vec"]
-    static = ["static", "non-static", "static", "multichannel"]   # 0: non-static, 1: static, 2: multichannel
+    model_type = ["non-static", "static", "non-static", "multichannel"]
     accuracies = []
-    train_x_idx, train_y, test_x_idx, test_y = make_idx_data(revs, word_idx_map, max_l=max_l, k=k)    # 9595 1067 X 56
+    train_x, train_y, test_x, test_y = make_data(revs, word_idx_map, max_l=max_l, k=k)    # 9595 1067 X 56
     for i in tqdm(range(4), desc='i'):
-        train_x = make_data(train_x_idx, W[U[i]], max_l=max_l, k=k) # 9595, 1, 16800
-        test_x = make_data(test_x_idx, W[U[i]], max_l=max_l, k=k)
         train = TensorDataset(train_x, train_y)
+        test = TensorDataset(test_x, test_y)
         train_loader = DataLoader(train, batch_size=50)
-        accuracy = cnn_trainer(train_loader, test_x, test_y, W[U[i]], static[i], h=[3,4,5], feature=100, p=0.5, s=3, k=k)
+        accuracy = cnn_trainer(train_loader, test, model_type[i], h=[3,4,5], feature=100, p=0.5, s=3, k=k)
         accuracies.append(accuracy)
     print(accuracies)
 
