@@ -5,6 +5,12 @@ import argparse
 from huffman import HuffmanCoding
 import time
 import math
+from tqdm import tqdm
+
+
+#device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+device = torch.device('cpu')
+
 
 def sigmoid(x):
     return 1 / (1 + torch.exp(-x))
@@ -12,24 +18,31 @@ def sigmoid(x):
 def cosine(v1, v2):
     return torch.sum(v1 * v2) / torch.sqrt(torch.sum(v1 * v1) * torch.sum(v2 * v2))
 
-def Analogical_Reasoning_Task(embedding, w2i):
+def Analogical_Reasoning_Task(embedding, w2i, i2w):
 #######################  Input  #########################
 # embedding : Word embedding (type:torch.tesnor(V,D))   #
 #########################################################
 
     questions = open("questions-words.txt", 'r').readlines()
 
+    total_time = 0
+    start_time = time.time()
+
     total = [0]
     answer = [0]
     cnt = -1
-    for q in questions:
+    for q in tqdm(questions):
         if q[0] == ':':
             if cnt != -1:
+                end_time = time.time()
+                print("Time:", end_time - start_time)
                 print("Result:", answer[cnt], '/', total[cnt])
                 print("Accuracy:", round(answer[cnt] / total[cnt] * 100, 3), '%')
                 print()
                 total.append(0)
                 answer.append(0)
+                start_time = end_time
+                total_time += start_time
 
             print(q[2:])
             cnt += 1
@@ -48,13 +61,19 @@ def Analogical_Reasoning_Task(embedding, w2i):
             vy1 = embedding[w2i[y1]]
             vx2 = embedding[w2i[x2]]
 
+            length = (embedding * embedding).sum(1) ** 0.5
             vector = vx1 - vx2 + vy1
 
-            distance = [(cosine(vector, embedding[w]), w) for w in range(embedding.size()[0])]
-            closest = sorted(distance, key=lambda t: t[0], reverse=True)[:10]
+            # distance = [(cosine(vector, embedding[w]), w) for w in range(embedding.size()[0])]
+            # closest = sorted(distance, key=lambda t: t[0], reverse=True)[:10]
 
-            if sum(map(lambda x: (x[1] == w2i[y2]), closest)) > 0:
-                answer[cnt] += 1
+            # if sum(map(lambda x: (x[1] == w2i[y2]), closest)) > 0:
+            #     answer[cnt] += 1
+            sim = (vector@embedding.t())[0]/length
+            value, idx = sim.squeeze().topk(10)
+            for ind, val in zip(idx, value):
+                if ind.item() == y2:
+                    answer[cnt] += 1
             total[cnt] += 1
 
     print("Result:", answer[cnt], '/', total[cnt])
@@ -62,8 +81,7 @@ def Analogical_Reasoning_Task(embedding, w2i):
     print()
     print("Total Result:", sum(answer), '/', sum(total))
     print("Total Accuracy:", round(sum(answer) / sum(total) * 100, 3), '%')
-
-    pass
+    print("Total Time:", total_time)
 
 def subsampling(word_seq):
 ###############################  Output  #########################################
@@ -100,8 +118,8 @@ def skipgram_HS(centerWord, contextCode, inputMatrix, outputMatrix):
     K, _ = outputMatrix.size()
 
     loss = None
-    grad_in = torch.zeros(1, D)
-    grad_out = torch.ones(K, D)
+    grad_in = torch.zeros(1, D).to(device)
+    grad_out = torch.ones(K, D).to(device)
 
 
     inputVector = inputMatrix[centerWord].reshape(D, 1)
@@ -143,7 +161,7 @@ def skipgram_NS(centerWord, inputMatrix, outputMatrix):
 
     loss = None
     grad_in = None
-    grad_out = torch.Tensor(K, D)
+    grad_out = torch.Tensor(K, D).to(device)
 
     inputVector = inputMatrix[centerWord]
 
@@ -174,21 +192,22 @@ def CBOW_HS(contextWords, centerCode, inputMatrix, outputMatrix):
 # grad_in : Gradient of inputMatrix (type:torch.tensor(1,D))                      #
 # grad_out : Gradient of outputMatrix (type:torch.tesnor(K,D))                    #
 ###################################################################################
-
+    
     V, D = inputMatrix.size()
     K, _ = outputMatrix.size()
 
     loss = None
-    grad_in = torch.zeros(1, D)
-    grad_out = torch.ones(K, D)
+    grad_in = torch.zeros(1, D).to(device)
+    grad_out = torch.ones(K, D).to(device)
 
     inputVector = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True)
 
     p = 1
     for j in range(K):
+        st=time.time()
         bti = 1 if centerCode[j] == '0' else -1
         vj = outputMatrix[j].reshape(1, D)
-        vh = torch.mm(vj, inputVector)
+        vh = vj@inputVector
         p *= sigmoid(bti * vh)
 
         tj = 1 if bti == 1 else 0
@@ -197,6 +216,7 @@ def CBOW_HS(contextWords, centerCode, inputMatrix, outputMatrix):
         grad_out[j] *= (grad * inputVector).reshape(D)
         grad_in += grad * vj
 
+    st=time.time()
     loss = -torch.log(p).reshape(1)
 
     return loss, grad_in, grad_out
@@ -220,7 +240,7 @@ def CBOW_NS(contextWords, inputMatrix, outputMatrix):
 
     loss = None
     grad_in = None
-    grad_out = torch.Tensor(K, D)
+    grad_out = torch.Tensor(K, D).to(device)
 
     inputVector = torch.sum(inputMatrix[contextWords].t(), dim=1, keepdim=True)
 
@@ -242,8 +262,8 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
 # train_seq : list(tuple(int, list(int))
 
 # Xavier initialization of weight matrices
-    W_in = torch.randn(numwords, dimension) / (dimension**0.5)
-    W_out = torch.randn(numwords, dimension) / (dimension**0.5)
+    W_in = torch.randn(numwords, dimension).to(device) / (dimension**0.5)
+    W_out = torch.randn(numwords, dimension).to(device) / (dimension**0.5)
     i=0
     losses=[]
     print("# of training samples")
@@ -251,13 +271,14 @@ def word2vec_trainer(input_seq, target_seq, numwords, codes, nodes, stats, mode=
     print()
 
     times = []
-
+    
     for _ in range(epoch):
         start_time = time.time()
 
         #Training word2vec using SGD(Batch size : 1)
-        for inputs, output in zip(input_seq,target_seq):
+        for inputs, output in tqdm(zip(input_seq,target_seq)):
             i+=1
+            st = time.time()
             if mode=="CBOW":
                 if NS==0:
                     #Only use the activated rows of the weight matrix
@@ -406,6 +427,6 @@ def main():
 
     #Training section
     emb,_ = word2vec_trainer(input_set, target_set, len(w2i), codedict, nodecode, freqtable, mode=mode, NS=ns, dimension=64, epoch=1, learning_rate=0.025)
-    Analogical_Reasoning_Task(emb, w2i)
+    Analogical_Reasoning_Task(emb, w2i, i2w)
 
 main()
