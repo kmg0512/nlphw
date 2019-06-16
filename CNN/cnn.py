@@ -104,14 +104,14 @@ def build_data():
         with open(fnames[i], "r", encoding="cp1252") as f:
             for line in f:
                 sent = clean_str(line.strip())
-                
+
                 words = set(sent.split())
                 for word in words:
                     vocab[word] += 1
 
                 datum  = {"y":i, "text": sent}
                 data.append(datum)
-                
+
                 l = len(sent.split())
                 if l > max_l:
                     max_l = l
@@ -135,7 +135,7 @@ def load_bin_vec(fname, vocab):
                     break
                 if ch != '\n':
                     word.append(ch)
-                    
+
             if word in vocab:
                 pre_trained[word] = torch.from_numpy(np.frombuffer(f.read(binary_len), dtype='float32')).to(device)
             else:
@@ -146,7 +146,7 @@ def load_bin_vec(fname, vocab):
 
 def get_idx_from_sent(sent, word_idx_map, max_l=56, k=300):
     word_idx = []
-    
+
     words = sent.split()
     for word in words:
         if word in word_idx_map:
