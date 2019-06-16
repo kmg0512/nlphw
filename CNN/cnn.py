@@ -164,12 +164,12 @@ def cnn_trainer(train_loader, test, word_vecs, max_l, model_type, h=[3,4,5], fea
     model.fc.bias.requires_grad = False
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.SGD(parameters, lr=0.1)
+    optimizer = optim.SGD(parameters, lr=learning_rate)
 
     criterion = nn.CrossEntropyLoss()
 
     # Train model
-    for epoch in tqdm(range(epoch), desc='epoch', leave=False):
+    for i in tqdm(range(epoch), desc='epoch', leave=False):
         losses = []
         for train_x, train_y in tqdm(train_loader, desc='train', leave=False):
             train_x, train_y = Variable(train_x), Variable(train_y)
@@ -180,8 +180,8 @@ def cnn_trainer(train_loader, test, word_vecs, max_l, model_type, h=[3,4,5], fea
             nn.utils.clip_grad_norm_(parameters, max_norm=s)
             optimizer.step()
             losses.append(loss.item())
-        if (epoch+1) % 5 == 0:
-            print("Epoch: ", epoch+1, "Loss: ", )
+        if (i+1) % 5 == 0:
+            print("Epoch: ", i+1, "Loss: ", )
 
     # Test model
     test_x, test_y = test.tensors
